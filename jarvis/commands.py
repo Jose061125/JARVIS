@@ -333,6 +333,90 @@ def _youtube_music_autoplay_task() -> None:
         return
 
 
+def _windows_candidate_paths(app_name: str) -> list[str]:
+    local_app_data = os.environ.get("LOCALAPPDATA", "")
+    program_files = os.environ.get("ProgramFiles", r"C:\Program Files")
+    program_files_x86 = os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")
+
+    office_roots = [
+        os.path.join(program_files, "Microsoft Office", "root"),
+        os.path.join(program_files_x86, "Microsoft Office", "root"),
+        os.path.join(program_files, "Microsoft Office"),
+        os.path.join(program_files_x86, "Microsoft Office"),
+    ]
+
+    office_executables = {
+        "word": "WINWORD.EXE",
+        "excel": "EXCEL.EXE",
+        "powerpoint": "POWERPNT.EXE",
+        "outlook": "OUTLOOK.EXE",
+    }
+
+    if app_name in office_executables:
+        executable = office_executables[app_name]
+        candidates: list[str] = []
+        for root in office_roots:
+            candidates.extend(
+                [
+                    os.path.join(root, "Office16", executable),
+                    os.path.join(root, "Office15", executable),
+                    os.path.join(root, "Office14", executable),
+                ]
+            )
+        return candidates
+
+    if app_name == "whatsapp":
+        return [
+            os.path.join(local_app_data, "WhatsApp", "WhatsApp.exe"),
+            os.path.join(local_app_data, "Programs", "WhatsApp", "WhatsApp.exe"),
+        ]
+
+    return []
+
+
+def _open_windows_application(app_name: str, executable: str) -> bool:
+    protocol_map = {
+        "edge": "microsoft-edge:",
+        "microsoft edge": "microsoft-edge:",
+        "configuracion": "ms-settings:",
+        "configuración": "ms-settings:",
+        "word": "ms-word:",
+        "excel": "ms-excel:",
+        "powerpoint": "ms-powerpoint:",
+        "whatsapp": "whatsapp:",
+    }
+
+    protocol = protocol_map.get(app_name)
+    if protocol:
+        try:
+            os.startfile(protocol)
+            return True
+        except OSError:
+            pass
+
+    which_result = shutil.which(executable)
+    if which_result:
+        try:
+            subprocess.Popen([which_result])
+            return True
+        except OSError:
+            pass
+
+    for candidate in _windows_candidate_paths(app_name):
+        if os.path.exists(candidate):
+            try:
+                os.startfile(candidate)
+                return True
+            except OSError:
+                pass
+
+    try:
+        subprocess.Popen(["cmd", "/c", "start", "", executable], shell=True)
+        return True
+    except OSError:
+        return False
+
+
 def open_application(app_name: str) -> str:
     """Intenta abrir una aplicación por nombre."""
     app_name = app_name.strip().lower()
@@ -427,16 +511,8 @@ def open_application(app_name: str) -> str:
 
     try:
         if system == "Windows":
-            # En Windows, varios navegadores no siempre están en PATH.
-            # Usamos protocolos/START para que el sistema resuelva la app instalada.
-            if executable == "msedge.exe":
-                os.startfile("microsoft-edge:")
-            elif executable in ("chrome.exe", "firefox.exe", "brave.exe", "opera.exe"):
-                subprocess.Popen(["cmd", "/c", "start", "", executable], shell=True)
-            elif executable == "ms-settings:":
-                os.startfile("ms-settings:")
-            else:
-                subprocess.Popen(executable, shell=True)
+            if not _open_windows_application(app_name, executable):
+                return f"No pude abrir {app_name} en Windows."
         elif system == "Darwin":  # macOS
             subprocess.Popen(["open", "-a", executable])
         else:  # Linux
