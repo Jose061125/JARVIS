@@ -14,8 +14,6 @@ pyinstaller ^
     --onefile ^
     --noconsole ^
     --name "ECHONEX" ^
-    --icon "jarvis/assets/icon.ico" ^
-    --add-data "jarvis/assets;jarvis/assets" ^
     --hidden-import "customtkinter" ^
     --hidden-import "edge_tts" ^
     --hidden-import "pygame" ^
