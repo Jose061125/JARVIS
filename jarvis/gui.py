@@ -124,7 +124,7 @@ class JarvisApp(ctk.CTk):
             text="ENTERPRISE AI CORE",
             font=ctk.CTkFont(size=12, weight="bold"),
             text_color="#4fb8ff",
-        ).place(relx=0.5, rely=0.12, anchor="center")
+        ).place(relx=0.5, rely=0.10, anchor="center")
 
         self.welcome_title_label = ctk.CTkLabel(
             self.welcome_card,
@@ -132,7 +132,7 @@ class JarvisApp(ctk.CTk):
             font=ctk.CTkFont(size=68, weight="bold"),
             text_color="#2ee6a6",
         )
-        self.welcome_title_label.place(relx=0.5, rely=0.26, anchor="center")
+        self.welcome_title_label.place(relx=0.5, rely=0.23, anchor="center")
 
         self.welcome_title_glow = ctk.CTkLabel(
             self.welcome_card,
@@ -140,32 +140,35 @@ class JarvisApp(ctk.CTk):
             font=ctk.CTkFont(size=68, weight="bold"),
             text_color="#4a4ad9",
         )
-        self.welcome_title_glow.place(relx=0.5, rely=0.263, anchor="center")
+        self.welcome_title_glow.place(relx=0.5, rely=0.233, anchor="center")
         self.welcome_title_glow.lower(self.welcome_title_label)
 
         ctk.CTkLabel(
             self.welcome_card,
             text="Asistente inteligente para tu PC",
-            font=ctk.CTkFont(size=22),
+            font=ctk.CTkFont(size=24, weight="bold"),
             text_color="#90a3cf",
-        ).place(relx=0.5, rely=0.38, anchor="center")
+        ).place(relx=0.5, rely=0.35, anchor="center")
+
+        subtitle_row = ctk.CTkFrame(self.welcome_card, fg_color="transparent")
+        subtitle_row.place(relx=0.5, rely=0.43, anchor="center")
 
         ctk.CTkLabel(
-            self.welcome_card,
-            text="Voz, comandos del sistema y navegador en tiempo real",
-            font=ctk.CTkFont(size=16),
-            text_color="#67e6ff",
-        ).place(relx=0.5, rely=0.45, anchor="center")
-
-        ctk.CTkLabel(
-            self.welcome_card,
+            subtitle_row,
             text="✦",
             font=ctk.CTkFont(size=20, weight="bold"),
             text_color="#d24dff",
-        ).place(relx=0.23, rely=0.45, anchor="center")
+        ).pack(side="left", padx=(0, 8))
+
+        ctk.CTkLabel(
+            subtitle_row,
+            text="Voz, comandos del sistema y navegador en tiempo real",
+            font=ctk.CTkFont(size=16),
+            text_color="#67e6ff",
+        ).pack(side="left")
 
         self.wave_canvas = tk.Canvas(self.welcome_card, width=320, height=84, bg="#0a142a", highlightthickness=0, bd=0)
-        self.wave_canvas.place(relx=0.5, rely=0.58, anchor="center")
+        self.wave_canvas.place(relx=0.5, rely=0.57, anchor="center")
 
         ctk.CTkLabel(
             self.welcome_card,
@@ -185,7 +188,7 @@ class JarvisApp(ctk.CTk):
             font=ctk.CTkFont(size=24, weight="bold"),
             command=self._start_jarvis,
         )
-        self.start_btn.place(relx=0.5, rely=0.76, anchor="center")
+        self.start_btn.place(relx=0.5, rely=0.75, anchor="center")
 
         self.right_panel = ctk.CTkFrame(self.welcome_frame, fg_color="#06102a", corner_radius=18, border_width=1, border_color="#1a315a")
         self.right_panel.place(relx=0.89, rely=0.5, relwidth=0.20, relheight=0.92, anchor="center")
@@ -198,13 +201,13 @@ class JarvisApp(ctk.CTk):
             ("Acceso rapido", ""),
         ]
         for idx, (title, desc) in enumerate(info_cards):
-            y = 0.18 + idx * 0.24
+            y = 0.17 + idx * 0.23
             card = ctk.CTkFrame(self.right_panel, fg_color="#0c1a3d", corner_radius=18, border_width=1, border_color="#1e4a89")
-            card.place(relx=0.5, rely=y, relwidth=0.88, relheight=0.20, anchor="center")
+            card.place(relx=0.5, rely=y, relwidth=0.88, relheight=0.19, anchor="center")
             badge = ctk.CTkFrame(card, width=34, height=34, fg_color="#1a3f78", corner_radius=17)
             badge.place(relx=0.9, rely=0.28, anchor="center")
             ctk.CTkLabel(badge, text="●", font=ctk.CTkFont(size=16, weight="bold"), text_color="#59f0c5").place(relx=0.5, rely=0.5, anchor="center")
-            ctk.CTkLabel(card, text=title, font=ctk.CTkFont(size=18, weight="bold"), text_color="#67e6ff").place(relx=0.06, rely=0.28, anchor="w")
+            ctk.CTkLabel(card, text=title, font=ctk.CTkFont(size=16, weight="bold"), text_color="#67e6ff").place(relx=0.06, rely=0.28, anchor="w")
 
             if title != "Acceso rapido":
                 ctk.CTkLabel(card, text=desc, font=ctk.CTkFont(size=13), text_color="#c0cdef", wraplength=240, justify="left").place(relx=0.06, rely=0.66, anchor="w")
