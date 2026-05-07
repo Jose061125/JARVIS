@@ -134,6 +134,15 @@ class JarvisApp(ctk.CTk):
         )
         self.welcome_title_label.place(relx=0.5, rely=0.26, anchor="center")
 
+        self.welcome_title_glow = ctk.CTkLabel(
+            self.welcome_card,
+            text=f"{ASSISTANT_NAME}",
+            font=ctk.CTkFont(size=68, weight="bold"),
+            text_color="#4a4ad9",
+        )
+        self.welcome_title_glow.place(relx=0.5, rely=0.263, anchor="center")
+        self.welcome_title_glow.lower(self.welcome_title_label)
+
         ctk.CTkLabel(
             self.welcome_card,
             text="Asistente inteligente para tu PC",
@@ -147,6 +156,9 @@ class JarvisApp(ctk.CTk):
             font=ctk.CTkFont(size=16),
             text_color="#67e6ff",
         ).place(relx=0.5, rely=0.45, anchor="center")
+
+        self.wave_canvas = tk.Canvas(self.welcome_card, width=320, height=84, bg="#0a142a", highlightthickness=0, bd=0)
+        self.wave_canvas.place(relx=0.5, rely=0.58, anchor="center")
 
         ctk.CTkLabel(
             self.welcome_card,
@@ -182,6 +194,9 @@ class JarvisApp(ctk.CTk):
             y = 0.18 + idx * 0.24
             card = ctk.CTkFrame(self.right_panel, fg_color="#0c1a3d", corner_radius=18, border_width=1, border_color="#1e4a89")
             card.place(relx=0.5, rely=y, relwidth=0.88, relheight=0.20, anchor="center")
+            badge = ctk.CTkFrame(card, width=34, height=34, fg_color="#1a3f78", corner_radius=17)
+            badge.place(relx=0.9, rely=0.28, anchor="center")
+            ctk.CTkLabel(badge, text="●", font=ctk.CTkFont(size=16, weight="bold"), text_color="#59f0c5").place(relx=0.5, rely=0.5, anchor="center")
             ctk.CTkLabel(card, text=title, font=ctk.CTkFont(size=18, weight="bold"), text_color="#67e6ff").place(relx=0.06, rely=0.28, anchor="w")
             ctk.CTkLabel(card, text=desc, font=ctk.CTkFont(size=13), text_color="#c0cdef", wraplength=240, justify="left").place(relx=0.06, rely=0.66, anchor="w")
 
@@ -288,12 +303,32 @@ class JarvisApp(ctk.CTk):
         else:
             panel.configure(border_color="#1a315a", fg_color="#06102a")
 
+    def _draw_welcome_wave(self):
+        if not getattr(self, "wave_canvas", None):
+            return
+        c = self.wave_canvas
+        c.delete("all")
+        phase = self._welcome_phase
+        bars = 17
+        center_x = 160
+        base_y = 70
+        gap = 16
+
+        for i in range(bars):
+            rel = i - (bars // 2)
+            x = center_x + rel * gap
+            env = 1.0 - (abs(rel) / (bars // 2 + 1))
+            h = int(18 + 52 * env * (0.45 + 0.55 * abs(math.sin(phase * 2.8 + i * 0.9))))
+            color = "#d24dff" if i % 2 == 0 else "#3ae4ff"
+            c.create_line(x, base_y, x, base_y - h, fill=color, width=6)
+
     def _animate_welcome(self):
         if not self._welcome_active:
             return
         self._welcome_phase += 0.08
         self._draw_welcome_background()
         self._draw_logo_orb()
+        self._draw_welcome_wave()
 
         # Pulso neon para el titulo principal
         if getattr(self, "welcome_title_label", None):
@@ -302,6 +337,7 @@ class JarvisApp(ctk.CTk):
             g = int(90 + 130 * glow)
             b = 255
             self.welcome_title_label.configure(text_color=f"#{r:02x}{g:02x}{b:02x}")
+            self.welcome_title_glow.configure(text_color=f"#{max(20, r-55):02x}3cff")
 
         self.after(45, self._animate_welcome)
 
