@@ -38,6 +38,7 @@ class JarvisApp(ctk.CTk):
         self._hud_phase = 0.0
         self._welcome_phase = 0.0
         self._welcome_active = True
+        self._start_transition_step = 0
 
         self.protocol("WM_DELETE_WINDOW", self._on_close)
         self._build_welcome_screen()
@@ -60,22 +61,27 @@ class JarvisApp(ctk.CTk):
         self.welcome_canvas.grid(row=0, column=0, sticky="nsew")
         self.welcome_canvas.bind("<Configure>", lambda _e: self._draw_welcome_background())
 
-        left_panel = ctk.CTkFrame(self.welcome_frame, fg_color="#06102a", corner_radius=18, border_width=1, border_color="#1a315a")
-        left_panel.place(relx=0.12, rely=0.5, relwidth=0.16, relheight=0.88, anchor="center")
+        self.left_panel = ctk.CTkFrame(self.welcome_frame, fg_color="#06102a", corner_radius=18, border_width=1, border_color="#1a315a")
+        self.left_panel.place(relx=0.12, rely=0.5, relwidth=0.16, relheight=0.88, anchor="center")
+        self.left_panel.bind("<Enter>", lambda _e: self._set_panel_hover(self.left_panel, True))
+        self.left_panel.bind("<Leave>", lambda _e: self._set_panel_hover(self.left_panel, False))
+
+        self.logo_canvas = tk.Canvas(self.left_panel, width=120, height=120, bg="#06102a", highlightthickness=0, bd=0)
+        self.logo_canvas.place(relx=0.5, rely=0.08, anchor="center")
 
         ctk.CTkLabel(
-            left_panel,
+            self.left_panel,
             text=ASSISTANT_NAME,
             font=ctk.CTkFont(size=24, weight="bold"),
             text_color="#2ee6a6",
-        ).place(relx=0.5, rely=0.08, anchor="center")
+        ).place(relx=0.5, rely=0.18, anchor="center")
 
         menu_items = ["Inicio", "Voz", "Navegador", "Configuracion", "Acerca de"]
         for idx, item in enumerate(menu_items):
             y = 0.22 + idx * 0.1
             active = item == "Inicio"
             ctk.CTkButton(
-                left_panel,
+                self.left_panel,
                 text=item,
                 width=130,
                 height=36,
@@ -87,45 +93,46 @@ class JarvisApp(ctk.CTk):
             ).place(relx=0.5, rely=y, anchor="center")
 
         ctk.CTkLabel(
-            left_panel,
+            self.left_panel,
             text="SISTEMA ACTIVO",
             font=ctk.CTkFont(size=12, weight="bold"),
             text_color="#4ee39a",
         ).place(relx=0.5, rely=0.9, anchor="center")
 
-        card = ctk.CTkFrame(self.welcome_frame, fg_color="#0a142a", corner_radius=22, border_width=1, border_color="#1c3e73")
-        card.place(relx=0.5, rely=0.5, relwidth=0.5, relheight=0.66, anchor="center")
+        self.welcome_card = ctk.CTkFrame(self.welcome_frame, fg_color="#0a142a", corner_radius=22, border_width=1, border_color="#1c3e73")
+        self.welcome_card.place(relx=0.5, rely=0.5, relwidth=0.5, relheight=0.66, anchor="center")
 
         ctk.CTkLabel(
-            card,
+            self.welcome_card,
             text="ENTERPRISE AI CORE",
             font=ctk.CTkFont(size=12, weight="bold"),
             text_color="#4fb8ff",
         ).place(relx=0.5, rely=0.12, anchor="center")
 
-        ctk.CTkLabel(
-            card,
+        self.welcome_title_label = ctk.CTkLabel(
+            self.welcome_card,
             text=f"{ASSISTANT_NAME}",
             font=ctk.CTkFont(size=62, weight="bold"),
             text_color="#2ee6a6",
-        ).place(relx=0.5, rely=0.32, anchor="center")
+        )
+        self.welcome_title_label.place(relx=0.5, rely=0.32, anchor="center")
 
         ctk.CTkLabel(
-            card,
+            self.welcome_card,
             text="Asistente inteligente para tu PC",
             font=ctk.CTkFont(size=20),
             text_color="#90a3cf",
         ).place(relx=0.5, rely=0.5, anchor="center")
 
         ctk.CTkLabel(
-            card,
+            self.welcome_card,
             text="Voz, comandos del sistema y navegador en tiempo real",
             font=ctk.CTkFont(size=14),
             text_color="#6e81ad",
         ).place(relx=0.5, rely=0.58, anchor="center")
 
-        ctk.CTkButton(
-            card,
+        self.start_btn = ctk.CTkButton(
+            self.welcome_card,
             text="Iniciar JARVIS",
             width=230,
             height=50,
@@ -133,27 +140,30 @@ class JarvisApp(ctk.CTk):
             fg_color="#1c8cff",
             hover_color="#36a0ff",
             command=self._start_jarvis,
-        ).place(relx=0.5, rely=0.78, anchor="center")
+        )
+        self.start_btn.place(relx=0.5, rely=0.78, anchor="center")
 
-        right_panel = ctk.CTkFrame(self.welcome_frame, fg_color="#06102a", corner_radius=18, border_width=1, border_color="#1a315a")
-        right_panel.place(relx=0.88, rely=0.5, relwidth=0.16, relheight=0.88, anchor="center")
+        self.right_panel = ctk.CTkFrame(self.welcome_frame, fg_color="#06102a", corner_radius=18, border_width=1, border_color="#1a315a")
+        self.right_panel.place(relx=0.88, rely=0.5, relwidth=0.16, relheight=0.88, anchor="center")
+        self.right_panel.bind("<Enter>", lambda _e: self._set_panel_hover(self.right_panel, True))
+        self.right_panel.bind("<Leave>", lambda _e: self._set_panel_hover(self.right_panel, False))
 
         ctk.CTkLabel(
-            right_panel,
+            self.right_panel,
             text="ESTADO DEL SISTEMA",
             font=ctk.CTkFont(size=13, weight="bold"),
             text_color="#a5b8e9",
         ).place(relx=0.5, rely=0.08, anchor="center")
 
         ctk.CTkLabel(
-            right_panel,
+            self.right_panel,
             text="Optimo",
             font=ctk.CTkFont(size=18, weight="bold"),
             text_color="#2ee6a6",
         ).place(relx=0.5, rely=0.16, anchor="center")
 
         ctk.CTkLabel(
-            right_panel,
+            self.right_panel,
             text="ACERCA DE",
             font=ctk.CTkFont(size=13, weight="bold"),
             text_color="#a5b8e9",
@@ -166,7 +176,7 @@ class JarvisApp(ctk.CTk):
             "y responde con IA en tiempo real."
         )
         ctk.CTkLabel(
-            right_panel,
+            self.right_panel,
             text=about_text,
             font=ctk.CTkFont(size=12),
             justify="left",
@@ -241,14 +251,62 @@ class JarvisApp(ctk.CTk):
         canvas.create_oval(x - int(r * 0.72), y - int(r * 0.72), x + int(r * 0.72), y + int(r * 0.72), outline=color, width=2)
         canvas.create_oval(x - int(r * 0.44), y - int(r * 0.44), x + int(r * 0.44), y + int(r * 0.44), outline="#2a5d8b", width=2)
 
+    def _draw_logo_orb(self):
+        if not getattr(self, "logo_canvas", None):
+            return
+        c = self.logo_canvas
+        c.delete("all")
+        phase = self._welcome_phase
+        cx, cy = 60, 60
+        r = int(42 + 4 * math.sin(phase * 2.4))
+
+        c.create_oval(cx - (r + 9), cy - (r + 9), cx + (r + 9), cy + (r + 9), outline="#173a63", width=2)
+        c.create_oval(cx - r, cy - r, cx + r, cy + r, outline="#49d8ff", width=2)
+        c.create_arc(cx - (r + 14), cy - (r + 14), cx + (r + 14), cy + (r + 14), start=(phase * 55) % 360, extent=200, style=tk.ARC, outline="#b665ff", width=2)
+        c.create_text(cx, cy, text=ASSISTANT_NAME[:1].upper(), fill="#78e2ff", font=("Segoe UI", 34, "bold"))
+
+    def _set_panel_hover(self, panel: ctk.CTkFrame, active: bool):
+        if active:
+            panel.configure(border_color="#49b9ff", fg_color="#08173a")
+        else:
+            panel.configure(border_color="#1a315a", fg_color="#06102a")
+
     def _animate_welcome(self):
         if not self._welcome_active:
             return
         self._welcome_phase += 0.08
         self._draw_welcome_background()
+        self._draw_logo_orb()
+
+        # Pulso neon para el titulo principal
+        if getattr(self, "welcome_title_label", None):
+            glow = 0.5 + 0.5 * math.sin(self._welcome_phase * 2.0)
+            r = int(90 + 80 * glow)
+            g = int(90 + 130 * glow)
+            b = 255
+            self.welcome_title_label.configure(text_color=f"#{r:02x}{g:02x}{b:02x}")
+
         self.after(45, self._animate_welcome)
 
     def _start_jarvis(self):
+        self.start_btn.configure(state="disabled", text="Inicializando...")
+        self._run_start_transition()
+
+    def _run_start_transition(self):
+        self._start_transition_step += 1
+        t = self._start_transition_step
+
+        # Mini transición: card asciende y reduce levemente mientras "inicializa"
+        if getattr(self, "welcome_card", None):
+            rely = 0.5 - (t * 0.004)
+            relwidth = 0.5 - (t * 0.004)
+            relheight = 0.66 - (t * 0.005)
+            self.welcome_card.place(relx=0.5, rely=max(0.38, rely), relwidth=max(0.34, relwidth), relheight=max(0.40, relheight), anchor="center")
+
+        if t < 18:
+            self.after(22, self._run_start_transition)
+            return
+
         self._welcome_active = False
         self.welcome_frame.destroy()
         self._build_ui()
