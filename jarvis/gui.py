@@ -60,8 +60,41 @@ class JarvisApp(ctk.CTk):
         self.welcome_canvas.grid(row=0, column=0, sticky="nsew")
         self.welcome_canvas.bind("<Configure>", lambda _e: self._draw_welcome_background())
 
+        left_panel = ctk.CTkFrame(self.welcome_frame, fg_color="#06102a", corner_radius=18, border_width=1, border_color="#1a315a")
+        left_panel.place(relx=0.12, rely=0.5, relwidth=0.16, relheight=0.88, anchor="center")
+
+        ctk.CTkLabel(
+            left_panel,
+            text=ASSISTANT_NAME,
+            font=ctk.CTkFont(size=24, weight="bold"),
+            text_color="#2ee6a6",
+        ).place(relx=0.5, rely=0.08, anchor="center")
+
+        menu_items = ["Inicio", "Voz", "Navegador", "Configuracion", "Acerca de"]
+        for idx, item in enumerate(menu_items):
+            y = 0.22 + idx * 0.1
+            active = item == "Inicio"
+            ctk.CTkButton(
+                left_panel,
+                text=item,
+                width=130,
+                height=36,
+                corner_radius=18,
+                fg_color="#2a47b8" if active else "#101f47",
+                hover_color="#3557cf" if active else "#173061",
+                text_color="#d8e5ff" if active else "#9eb3df",
+                command=lambda: None,
+            ).place(relx=0.5, rely=y, anchor="center")
+
+        ctk.CTkLabel(
+            left_panel,
+            text="SISTEMA ACTIVO",
+            font=ctk.CTkFont(size=12, weight="bold"),
+            text_color="#4ee39a",
+        ).place(relx=0.5, rely=0.9, anchor="center")
+
         card = ctk.CTkFrame(self.welcome_frame, fg_color="#0a142a", corner_radius=22, border_width=1, border_color="#1c3e73")
-        card.place(relx=0.5, rely=0.5, relwidth=0.58, relheight=0.66, anchor="center")
+        card.place(relx=0.5, rely=0.5, relwidth=0.5, relheight=0.66, anchor="center")
 
         ctk.CTkLabel(
             card,
@@ -102,6 +135,44 @@ class JarvisApp(ctk.CTk):
             command=self._start_jarvis,
         ).place(relx=0.5, rely=0.78, anchor="center")
 
+        right_panel = ctk.CTkFrame(self.welcome_frame, fg_color="#06102a", corner_radius=18, border_width=1, border_color="#1a315a")
+        right_panel.place(relx=0.88, rely=0.5, relwidth=0.16, relheight=0.88, anchor="center")
+
+        ctk.CTkLabel(
+            right_panel,
+            text="ESTADO DEL SISTEMA",
+            font=ctk.CTkFont(size=13, weight="bold"),
+            text_color="#a5b8e9",
+        ).place(relx=0.5, rely=0.08, anchor="center")
+
+        ctk.CTkLabel(
+            right_panel,
+            text="Optimo",
+            font=ctk.CTkFont(size=18, weight="bold"),
+            text_color="#2ee6a6",
+        ).place(relx=0.5, rely=0.16, anchor="center")
+
+        ctk.CTkLabel(
+            right_panel,
+            text="ACERCA DE",
+            font=ctk.CTkFont(size=13, weight="bold"),
+            text_color="#a5b8e9",
+        ).place(relx=0.5, rely=0.36, anchor="center")
+
+        about_text = (
+            f"{ASSISTANT_NAME} escucha tu voz,\n"
+            "ejecuta comandos del sistema,\n"
+            "abre apps y sitios web,\n"
+            "y responde con IA en tiempo real."
+        )
+        ctk.CTkLabel(
+            right_panel,
+            text=about_text,
+            font=ctk.CTkFont(size=12),
+            justify="left",
+            text_color="#8ea4d3",
+        ).place(relx=0.5, rely=0.56, anchor="center")
+
         self._animate_welcome()
 
     def _draw_welcome_background(self):
@@ -127,6 +198,37 @@ class JarvisApp(ctk.CTk):
 
         self._draw_welcome_core(canvas, left_x, cy, int(130 * pulse_a), "#1ed7ff")
         self._draw_welcome_core(canvas, right_x, cy, int(130 * pulse_b), "#2ee6a6")
+
+        # Nucleo central animado principal
+        center_x, center_y = int(w * 0.5), int(h * 0.58)
+        core_r = int(min(w, h) * 0.2 * (1.0 + 0.04 * math.sin(phase * 2.3)))
+        self._draw_welcome_core(canvas, center_x, center_y, core_r, "#ae58ff")
+
+        # Orbita y onda para dar sensacion de movimiento continuo
+        orbit_w = int(core_r * 2.6)
+        orbit_h = int(core_r * 0.8)
+        canvas.create_arc(
+            center_x - orbit_w,
+            center_y - orbit_h,
+            center_x + orbit_w,
+            center_y + orbit_h,
+            start=(phase * 40) % 360,
+            extent=220,
+            style=tk.ARC,
+            outline="#3f83ff",
+            width=2,
+        )
+
+        wave_y = center_y
+        wave_start = int(w * 0.34)
+        wave_end = int(w * 0.66)
+        prev_x, prev_y = wave_start, wave_y
+        for x in range(wave_start + 6, wave_end, 6):
+            rel = (x - wave_start) / max(1, (wave_end - wave_start))
+            amp = 20 * (0.3 + 0.7 * math.sin(rel * math.pi))
+            y = wave_y + int(amp * math.sin(phase * 5.0 + rel * 20.0))
+            canvas.create_line(prev_x, prev_y, x, y, fill="#45d3ff", width=2)
+            prev_x, prev_y = x, y
 
         # Barras decorativas superiores
         for i in range(7):
