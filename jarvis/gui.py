@@ -20,21 +20,12 @@ from jarvis.config import ASSISTANT_NAME, WAKE_WORDS
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
-QUICK_ACTIONS = [
-    ("Spotify", "abre spotify"),
-    ("Edge", "abre microsoft edge"),
-    ("YouTube", "busca musica lo-fi en youtube"),
-    ("Vol +", "sube el volumen"),
-    ("Vol -", "baja el volumen"),
-    ("Bloquear", "bloquea la pantalla"),
-]
-
 
 class JarvisApp(ctk.CTk):
     def __init__(self):
         super().__init__()
         self.title(f"{ASSISTANT_NAME} - Asistente IA")
-        self.geometry("880x650")
+        self.geometry("980x700")
         self.resizable(True, True)
         self.minsize(500, 450)
 
@@ -47,6 +38,52 @@ class JarvisApp(ctk.CTk):
         self._hud_phase = 0.0
 
         self.protocol("WM_DELETE_WINDOW", self._on_close)
+        self._build_welcome_screen()
+
+    def _build_welcome_screen(self):
+        self.welcome_frame = ctk.CTkFrame(self, corner_radius=0, fg_color="#050912")
+        self.welcome_frame.grid(row=0, column=0, sticky="nsew")
+        self.welcome_frame.grid_columnconfigure(0, weight=1)
+        self.welcome_frame.grid_rowconfigure(0, weight=1)
+
+        card = ctk.CTkFrame(self.welcome_frame, width=680, height=360, fg_color="#0b1224", corner_radius=18)
+        card.grid(row=0, column=0)
+        card.grid_propagate(False)
+
+        ctk.CTkLabel(
+            card,
+            text=f"{ASSISTANT_NAME}",
+            font=ctk.CTkFont(size=56, weight="bold"),
+            text_color="#2ee6a6",
+        ).place(relx=0.5, rely=0.28, anchor="center")
+
+        ctk.CTkLabel(
+            card,
+            text="Asistente inteligente para tu PC",
+            font=ctk.CTkFont(size=18),
+            text_color="#90a3cf",
+        ).place(relx=0.5, rely=0.45, anchor="center")
+
+        ctk.CTkLabel(
+            card,
+            text="Voz, comandos del sistema y navegador en tiempo real",
+            font=ctk.CTkFont(size=14),
+            text_color="#6e81ad",
+        ).place(relx=0.5, rely=0.54, anchor="center")
+
+        ctk.CTkButton(
+            card,
+            text="Iniciar JARVIS",
+            width=200,
+            height=46,
+            corner_radius=24,
+            fg_color="#1c8cff",
+            hover_color="#36a0ff",
+            command=self._start_jarvis,
+        ).place(relx=0.5, rely=0.74, anchor="center")
+
+    def _start_jarvis(self):
+        self.welcome_frame.destroy()
         self._build_ui()
         self._animate_hud()
         self._add_message("JARVIS", f"Hola, soy {ASSISTANT_NAME}. ¿En qué puedo ayudarte?", is_bot=True)
@@ -60,7 +97,7 @@ class JarvisApp(ctk.CTk):
         # ── Marco principal ──
         main = ctk.CTkFrame(self, corner_radius=0)
         main.grid(row=0, column=0, sticky="nsew")
-        main.grid_rowconfigure(2, weight=1)
+        main.grid_rowconfigure(1, weight=1)
         main.grid_columnconfigure(0, weight=1)
 
         # ── Header ──
@@ -105,21 +142,21 @@ class JarvisApp(ctk.CTk):
 
         # ── HUD reactivo ──
         hud_frame = ctk.CTkFrame(main, corner_radius=10, fg_color="#060a17")
-        hud_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=(6, 5))
+        hud_frame.grid(row=1, column=0, sticky="nsew", padx=10, pady=(6, 5))
         hud_frame.grid_columnconfigure(0, weight=1)
+        hud_frame.grid_rowconfigure(0, weight=1)
         self.hud_canvas = tk.Canvas(
             hud_frame,
-            height=210,
             bg="#060a17",
             highlightthickness=0,
             bd=0,
         )
-        self.hud_canvas.grid(row=0, column=0, sticky="ew")
+        self.hud_canvas.grid(row=0, column=0, sticky="nsew")
         self.hud_canvas.bind("<Configure>", lambda _e: self._draw_hud())
 
         # ── Área de chat ──
-        self.chat_box = ctk.CTkScrollableFrame(main, corner_radius=10, fg_color="#070b18")
-        self.chat_box.grid(row=2, column=0, sticky="nsew", padx=10, pady=5)
+        self.chat_box = ctk.CTkScrollableFrame(main, corner_radius=10, fg_color="#070b18", height=140)
+        self.chat_box.grid(row=2, column=0, sticky="ew", padx=10, pady=(0, 5))
         self.chat_box.grid_columnconfigure(0, weight=1)
 
         # ── Barra de estado ──
@@ -129,36 +166,9 @@ class JarvisApp(ctk.CTk):
         )
         self.status_label.grid(row=3, column=0, sticky="w", padx=15)
 
-        # ── Acciones rápidas ──
-        actions_frame = ctk.CTkFrame(main, height=56, corner_radius=0, fg_color="#0d1328")
-        actions_frame.grid(row=4, column=0, sticky="ew")
-        actions_frame.grid_columnconfigure(0, weight=1)
-
-        actions_row = ctk.CTkFrame(actions_frame, fg_color="transparent")
-        actions_row.grid(row=0, column=0, sticky="w", padx=10, pady=8)
-
-        ctk.CTkLabel(
-            actions_row,
-            text="Acciones rápidas",
-            font=ctk.CTkFont(size=12, weight="bold"),
-            text_color="#9fb0d9",
-        ).pack(side="left", padx=(0, 8))
-
-        for label, prompt in QUICK_ACTIONS:
-            ctk.CTkButton(
-                actions_row,
-                text=label,
-                width=88,
-                height=30,
-                corner_radius=16,
-                fg_color="#1f2d52",
-                hover_color="#294075",
-                command=lambda p=prompt: self._process_input(p),
-            ).pack(side="left", padx=4)
-
         # ── Panel de entrada ──
         input_frame = ctk.CTkFrame(main, height=60, corner_radius=0, fg_color="#0b1022")
-        input_frame.grid(row=5, column=0, sticky="ew", padx=0, pady=0)
+        input_frame.grid(row=4, column=0, sticky="ew", padx=0, pady=0)
         input_frame.grid_columnconfigure(0, weight=1)
         input_frame.grid_propagate(False)
 
@@ -239,9 +249,10 @@ class JarvisApp(ctk.CTk):
     def _draw_hud(self):
         canvas = self.hud_canvas
         canvas.delete("all")
-        w = max(420, canvas.winfo_width())
-        h = max(190, canvas.winfo_height())
+        w = max(500, canvas.winfo_width())
+        h = max(320, canvas.winfo_height())
         cx, cy = w // 2, h // 2
+        radius = int(min(w, h) * 0.34)
 
         mode_colors = {
             "idle": "#28d7ff",
@@ -264,10 +275,16 @@ class JarvisApp(ctk.CTk):
         elif self._hud_mode == "listen":
             pulse *= 1.45
 
-        # Anillos principales
-        canvas.create_oval(cx - 88, cy - 88, cx + 88, cy + 88, outline="#12304d", width=2)
-        canvas.create_oval(cx - 70, cy - 70, cx + 70, cy + 70, outline="#143a5f", width=2)
-        canvas.create_oval(cx - 48, cy - 48, cx + 48, cy + 48, outline=color, width=3)
+        # Fondo técnico
+        for x in range(0, w, 48):
+            canvas.create_line(x, 0, x, h, fill="#081128", width=1)
+        for y in range(0, h, 48):
+            canvas.create_line(0, y, w, y, fill="#081128", width=1)
+
+        # Anillos principales escalados
+        canvas.create_oval(cx - int(radius * 1.08), cy - int(radius * 1.08), cx + int(radius * 1.08), cy + int(radius * 1.08), outline="#12304d", width=2)
+        canvas.create_oval(cx - int(radius * 0.82), cy - int(radius * 0.82), cx + int(radius * 0.82), cy + int(radius * 0.82), outline="#143a5f", width=2)
+        canvas.create_oval(cx - int(radius * 0.56), cy - int(radius * 0.56), cx + int(radius * 0.56), cy + int(radius * 0.56), outline=color, width=3)
 
         # Segmentos exteriores tipo ecualizador radial
         bars = 54
@@ -279,7 +296,7 @@ class JarvisApp(ctk.CTk):
             if self._hud_mode in ("idle", "wake"):
                 amp *= 0.55
 
-            r1 = 95
+            r1 = int(radius * 1.15)
             r2 = r1 + amp
             x1 = cx + math.cos(angle) * r1
             y1 = cy + math.sin(angle) * r1
@@ -290,10 +307,10 @@ class JarvisApp(ctk.CTk):
         # Arco de progreso animado
         extent = 70 + 40 * math.sin(self._hud_phase)
         canvas.create_arc(
-            cx - 110,
-            cy - 110,
-            cx + 110,
-            cy + 110,
+            cx - int(radius * 1.35),
+            cy - int(radius * 1.35),
+            cx + int(radius * 1.35),
+            cy + int(radius * 1.35),
             start=(self._hud_phase * 45) % 360,
             extent=extent,
             style=tk.ARC,
@@ -308,8 +325,11 @@ class JarvisApp(ctk.CTk):
             "speak": "HABLANDO",
             "wake": "WAKE MODE",
         }
-        canvas.create_text(cx, cy - 6, text=ASSISTANT_NAME, fill="#b7c7e8", font=("Segoe UI", 14, "bold"))
-        canvas.create_text(cx, cy + 18, text=label_by_mode.get(self._hud_mode, "IDLE"), fill=color, font=("Segoe UI", 11, "bold"))
+        canvas.create_text(cx, cy - 10, text=ASSISTANT_NAME, fill="#b7c7e8", font=("Segoe UI", 18, "bold"))
+        canvas.create_text(cx, cy + 20, text=label_by_mode.get(self._hud_mode, "IDLE"), fill=color, font=("Segoe UI", 13, "bold"))
+        canvas.create_text(int(w * 0.15), int(h * 0.16), text="HI-TECH INTERFACE", fill="#1ed7ff", font=("Segoe UI", 15))
+        canvas.create_text(int(w * 0.84), int(h * 0.18), text="43%", fill="#28d7ff", font=("Segoe UI", 24))
+        canvas.create_text(int(w * 0.12), int(h * 0.84), text="71%", fill="#28d7ff", font=("Segoe UI", 24))
 
     def _animate_hud(self):
         self._hud_phase += 0.11
