@@ -61,43 +61,59 @@ class JarvisApp(ctk.CTk):
         self.welcome_canvas.grid(row=0, column=0, sticky="nsew")
         self.welcome_canvas.bind("<Configure>", lambda _e: self._draw_welcome_background())
 
-        self.left_panel = ctk.CTkFrame(self.welcome_frame, fg_color="#06102a", corner_radius=18, border_width=1, border_color="#1a315a")
-        self.left_panel.place(relx=0.12, rely=0.5, relwidth=0.16, relheight=0.88, anchor="center")
+        self.left_panel = ctk.CTkFrame(self.welcome_frame, fg_color="#071333", corner_radius=24, border_width=1, border_color="#2a4f90")
+        self.left_panel.place(relx=0.12, rely=0.5, relwidth=0.18, relheight=0.90, anchor="center")
         self.left_panel.bind("<Enter>", lambda _e: self._set_panel_hover(self.left_panel, True))
         self.left_panel.bind("<Leave>", lambda _e: self._set_panel_hover(self.left_panel, False))
 
-        self.logo_canvas = tk.Canvas(self.left_panel, width=120, height=120, bg="#06102a", highlightthickness=0, bd=0)
-        self.logo_canvas.place(relx=0.5, rely=0.08, anchor="center")
+        self.logo_canvas = tk.Canvas(self.left_panel, width=132, height=132, bg="#071333", highlightthickness=0, bd=0)
+        self.logo_canvas.place(relx=0.5, rely=0.11, anchor="center")
 
         ctk.CTkLabel(
             self.left_panel,
             text=ASSISTANT_NAME,
-            font=ctk.CTkFont(size=24, weight="bold"),
+            font=ctk.CTkFont(size=18, weight="bold"),
             text_color="#2ee6a6",
-        ).place(relx=0.5, rely=0.18, anchor="center")
+        ).place(relx=0.5, rely=0.24, anchor="center")
 
-        menu_items = ["Inicio", "Voz", "Navegador", "Configuracion", "Acerca de"]
-        for idx, item in enumerate(menu_items):
-            y = 0.22 + idx * 0.1
-            active = item == "Inicio"
+        menu_items = [
+            ("⌂", "Inicio"),
+            ("◉", "Voz"),
+            ("◎", "Navegador"),
+            ("⚙", "Configuracion"),
+            ("i", "Acerca de"),
+        ]
+        for idx, (icon, item) in enumerate(menu_items):
+            y = 0.33 + idx * 0.095
+            active = idx == 0
             ctk.CTkButton(
                 self.left_panel,
-                text=item,
-                width=130,
-                height=36,
-                corner_radius=18,
-                fg_color="#2a47b8" if active else "#101f47",
-                hover_color="#3557cf" if active else "#173061",
-                text_color="#d8e5ff" if active else "#9eb3df",
+                text=f"{icon}   {item}",
+                width=156,
+                height=38,
+                corner_radius=19,
+                fg_color="#3553c9" if active else "#122856",
+                hover_color="#3d64df" if active else "#1b3771",
+                text_color="#eef4ff" if active else "#abc1ee",
+                font=ctk.CTkFont(size=14, weight="bold" if active else "normal"),
                 command=lambda: None,
             ).place(relx=0.5, rely=y, anchor="center")
+
+        ctk.CTkFrame(self.left_panel, width=158, height=1, fg_color="#254b86").place(relx=0.5, rely=0.84, anchor="center")
 
         ctk.CTkLabel(
             self.left_panel,
             text="SISTEMA ACTIVO",
             font=ctk.CTkFont(size=12, weight="bold"),
             text_color="#4ee39a",
-        ).place(relx=0.5, rely=0.9, anchor="center")
+        ).place(relx=0.5, rely=0.91, anchor="center")
+
+        ctk.CTkLabel(
+            self.left_panel,
+            text="● Conectado",
+            font=ctk.CTkFont(size=11),
+            text_color="#73f0ba",
+        ).place(relx=0.5, rely=0.95, anchor="center")
 
         self.welcome_card = ctk.CTkFrame(self.welcome_frame, fg_color="#0a142a", corner_radius=22, border_width=1, border_color="#1c3e73")
         self.welcome_card.place(relx=0.5, rely=0.5, relwidth=0.5, relheight=0.66, anchor="center")
@@ -257,12 +273,12 @@ class JarvisApp(ctk.CTk):
         c = self.logo_canvas
         c.delete("all")
         phase = self._welcome_phase
-        cx, cy = 60, 60
-        r = int(42 + 4 * math.sin(phase * 2.4))
+        cx, cy = 66, 66
+        r = int(45 + 5 * math.sin(phase * 2.4))
 
-        c.create_oval(cx - (r + 9), cy - (r + 9), cx + (r + 9), cy + (r + 9), outline="#173a63", width=2)
+        c.create_oval(cx - (r + 12), cy - (r + 12), cx + (r + 12), cy + (r + 12), outline="#173a63", width=2)
         c.create_oval(cx - r, cy - r, cx + r, cy + r, outline="#49d8ff", width=2)
-        c.create_arc(cx - (r + 14), cy - (r + 14), cx + (r + 14), cy + (r + 14), start=(phase * 55) % 360, extent=200, style=tk.ARC, outline="#b665ff", width=2)
+        c.create_arc(cx - (r + 16), cy - (r + 16), cx + (r + 16), cy + (r + 16), start=(phase * 55) % 360, extent=220, style=tk.ARC, outline="#b665ff", width=2)
         c.create_text(cx, cy, text=ASSISTANT_NAME[:1].upper(), fill="#78e2ff", font=("Segoe UI", 34, "bold"))
 
     def _set_panel_hover(self, panel: ctk.CTkFrame, active: bool):
