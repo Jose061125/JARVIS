@@ -451,6 +451,15 @@ def open_application(app_name: str) -> str:
     canonical_app_name = _canonical_windows_app_name(app_name)
     system = platform.system()
 
+    # Algunas "apps" en realidad se usan via web.
+    web_app_map = {
+        "gmail": "https://mail.google.com/mail/u/0/#inbox",
+        "google mail": "https://mail.google.com/mail/u/0/#inbox",
+    }
+    if app_name in web_app_map:
+        webbrowser.open(web_app_map[app_name])
+        return f"Abriendo {app_name}..."
+
     # Mapa de nombres comunes → ejecutables
     app_map = {
         # Navegadores
@@ -719,6 +728,26 @@ def gmail_send(payload: str) -> str:
     return send_email(to_email=to_email, subject=subject, body=body)
 
 
+def gmail_draft(payload: str) -> str:
+    """Abre Gmail en modo redaccion con campos opcionales: to|subject|body"""
+    parts = [p.strip() for p in (payload or "").split("|", 2)]
+    while len(parts) < 3:
+        parts.append("")
+
+    to_email, subject, body = parts
+    compose_url = "https://mail.google.com/mail/u/0/?view=cm&fs=1&tf=1"
+
+    if to_email:
+        compose_url += f"&to={quote_plus(to_email)}"
+    if subject:
+        compose_url += f"&su={quote_plus(subject)}"
+    if body:
+        compose_url += f"&body={quote_plus(body)}"
+
+    webbrowser.open(compose_url)
+    return "Listo. Abri Gmail con la ventana para redactar el correo."
+
+
 def control_volume(action: str) -> str:
     """Controla el volumen del sistema (Windows/Linux)."""
     action = action.strip().lower()
@@ -919,6 +948,10 @@ def _execute_single_command(command_text: str) -> str | None:
     if command_text.startswith("MAIL_SEND:"):
         payload = command_text.split("MAIL_SEND:", 1)[1].strip()
         return gmail_send(payload)
+
+    if command_text.startswith("MAIL_DRAFT:"):
+        payload = command_text.split("MAIL_DRAFT:", 1)[1].strip()
+        return gmail_draft(payload)
 
     if command_text.startswith("DOC_CREATE:"):
         payload = command_text.split("DOC_CREATE:", 1)[1]
