@@ -6,3 +6,6 @@ build/
 *.spec
 .env
 jarvis/__pycache__/
+pilot_architecture/node_modules/
+pilot_architecture/dist/
+pilot_architecture/.env
