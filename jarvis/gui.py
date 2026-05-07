@@ -365,6 +365,12 @@ class JarvisApp(ctk.CTk):
         core_r = int(66 + 6 * math.sin(phase * 2.1))
         outer_r = int(118 + 8 * math.sin(phase * 1.4))
 
+        # Halo suave multicapa
+        for i in range(5):
+            halo_r = outer_r + 24 + i * 10
+            halo_color = ["#10284f", "#0f2b57", "#0e2a4f", "#0d2645", "#0b203a"][i]
+            c.create_oval(cx - halo_r, cy - halo_r, cx + halo_r, cy + halo_r, outline=halo_color, width=2)
+
         # Glow exterior
         c.create_oval(cx - (outer_r + 18), cy - (outer_r + 18), cx + (outer_r + 18), cy + (outer_r + 18), outline="#112b52", width=2)
         c.create_oval(cx - outer_r, cy - outer_r, cx + outer_r, cy + outer_r, outline="#35dbff", width=2)
@@ -375,13 +381,54 @@ class JarvisApp(ctk.CTk):
         c.create_arc(cx - (outer_r - 16), cy - (outer_r - 16), cx + (outer_r - 16), cy + (outer_r - 16),
                      start=(phase * -70) % 360, extent=170, style=tk.ARC, outline="#44e7ff", width=3)
 
+        # Segmentos brillantes tipo HUD
+        for i in range(14):
+            a0 = (phase * 22 + i * 24) % 360
+            ext = 10 + (i % 3) * 4
+            col = "#5ceaff" if i % 2 == 0 else "#d06bff"
+            c.create_arc(
+                cx - (outer_r - 4),
+                cy - (outer_r - 4),
+                cx + (outer_r - 4),
+                cy + (outer_r - 4),
+                start=a0,
+                extent=ext,
+                style=tk.ARC,
+                outline=col,
+                width=2,
+            )
+
+        # Nube de particulas dinamicas alrededor
+        for i in range(26):
+            a = phase * 0.7 + i * (2 * math.pi / 26)
+            pr = outer_r + 16 + 10 * math.sin(phase * 2.2 + i)
+            px = cx + int(math.cos(a) * pr)
+            py = cy + int(math.sin(a) * pr)
+            col = "#5be9ff" if i % 2 == 0 else "#c56bff"
+            c.create_oval(px - 2, py - 2, px + 2, py + 2, outline=col, fill=col)
+
         # Núcleo
         c.create_oval(cx - int(core_r * 1.45), cy - int(core_r * 1.45), cx + int(core_r * 1.45), cy + int(core_r * 1.45), outline="#1f4b7f", width=2)
         c.create_oval(cx - core_r, cy - core_r, cx + core_r, cy + core_r, outline="#56e6ff", width=3)
-        c.create_oval(cx - int(core_r * 0.72), cy - int(core_r * 0.72), cx + int(core_r * 0.72), cy + int(core_r * 0.72), fill="#1a2b5a", outline="#7e5dff", width=2)
+
+        # Degradado por capas del nucleo
+        grad_layers = [
+            (0.86, "#223c7f"),
+            (0.74, "#2a3ea1"),
+            (0.62, "#3c3ea8"),
+            (0.50, "#5343ad"),
+            (0.38, "#4b6bc8"),
+            (0.26, "#2ea9d6"),
+        ]
+        for ratio, col in grad_layers:
+            rr = int(core_r * ratio)
+            c.create_oval(cx - rr, cy - rr, cx + rr, cy + rr, outline=col, fill=col)
+
+        c.create_oval(cx - int(core_r * 0.14), cy - int(core_r * 0.14), cx + int(core_r * 0.14), cy + int(core_r * 0.14), outline="#91f0ff", fill="#91f0ff")
 
         # Letra central
-        c.create_text(cx, cy, text=ASSISTANT_NAME[:1].upper(), fill="#7fe7ff", font=("Segoe UI", 52, "bold"))
+        c.create_text(cx, cy + 1, text=ASSISTANT_NAME[:1].upper(), fill="#2a1d4f", font=("Segoe UI", 52, "bold"))
+        c.create_text(cx, cy, text=ASSISTANT_NAME[:1].upper(), fill="#baf6ff", font=("Segoe UI", 52, "bold"))
 
     def _animate_welcome(self):
         if not self._welcome_active:
