@@ -86,13 +86,11 @@ class JarvisApp(ctk.CTk):
         menu_items = [
             ("🏠", "Inicio", "inicio"),
             ("🎙", "Voz", "voz"),
-            ("⌨", "Comandos", "comandos"),
-            ("🌐", "Navegador", "navegador"),
             ("⚙", "Configuracion", "configuracion"),
             ("👤", "Acerca de", "acerca"),
         ]
         for idx, (icon, item, key) in enumerate(menu_items):
-            y = 0.30 + idx * 0.087
+            y = 0.36 + idx * 0.105
             active = idx == 0
             btn = ctk.CTkButton(
                 self.left_panel,
@@ -503,25 +501,74 @@ class JarvisApp(ctk.CTk):
     def _show_about_dialog(self):
         dlg = ctk.CTkToplevel(self)
         dlg.title(f"Acerca de {ASSISTANT_NAME}")
-        dlg.geometry("460x260")
+        dlg.geometry("580x420")
         dlg.resizable(False, False)
         dlg.grab_set()
+        dlg.configure(fg_color="#071022")
 
-        frame = ctk.CTkFrame(dlg, fg_color="#0b1631", corner_radius=14)
+        frame = ctk.CTkFrame(dlg, fg_color="#0b1631", corner_radius=18, border_width=1, border_color="#254b86")
         frame.pack(fill="both", expand=True, padx=12, pady=12)
 
-        ctk.CTkLabel(frame, text=ASSISTANT_NAME, font=ctk.CTkFont(size=28, weight="bold"), text_color="#67e6ff").pack(pady=(16, 8))
+        ctk.CTkLabel(
+            frame,
+            text=ASSISTANT_NAME,
+            font=ctk.CTkFont(size=34, weight="bold"),
+            text_color="#67e6ff",
+        ).pack(pady=(18, 4))
+
+        ctk.CTkLabel(
+            frame,
+            text="Nucleo inteligente para tu PC",
+            font=ctk.CTkFont(size=16, weight="bold"),
+            text_color="#d46bff",
+        ).pack(pady=(0, 10))
+
         ctk.CTkLabel(
             frame,
             text=(
-                "Asistente IA para PC con voz, automatizacion y navegador.\n"
-                "Puede abrir apps/sitios, ejecutar comandos y responder en tiempo real."
+                "ECHONEX es el asistente que hemos ido construyendo contigo: una app de escritorio\n"
+                "con identidad futurista, bienvenida interactiva, orb energetica, menu funcional y\n"
+                "un sistema de voz pensado para sentirse vivo y util desde el primer segundo."
             ),
             justify="center",
             text_color="#c5d5ff",
+            font=ctk.CTkFont(size=14),
+        ).pack(pady=(4, 12))
+
+        features_box = ctk.CTkFrame(frame, fg_color="#10204c", corner_radius=14, border_width=1, border_color="#2a5dab")
+        features_box.pack(fill="x", padx=20, pady=(0, 14))
+
+        ctk.CTkLabel(
+            features_box,
+            text=(
+                "• Conversa por texto y voz\n"
+                "• Abre aplicaciones y sitios web\n"
+                "• Controla volumen y acciones del sistema\n"
+                "• Tiene wake mode y HUD reactivo\n"
+                "• Usa una interfaz visual estilo sci-fi hecha para destacar"
+            ),
+            justify="left",
+            text_color="#d7e4ff",
             font=ctk.CTkFont(size=13),
-        ).pack(pady=8)
-        ctk.CTkButton(frame, text="Cerrar", width=120, command=dlg.destroy).pack(pady=(16, 10))
+        ).pack(anchor="w", padx=18, pady=16)
+
+        ctk.CTkLabel(
+            frame,
+            text="Escucha. Entiende. Ejecuta. Evoluciona.",
+            font=ctk.CTkFont(size=18, weight="bold"),
+            text_color="#7ae9ff",
+        ).pack(pady=(2, 12))
+
+        ctk.CTkButton(
+            frame,
+            text="Cerrar",
+            width=140,
+            height=36,
+            corner_radius=18,
+            fg_color="#2f4ec6",
+            hover_color="#3c64dd",
+            command=dlg.destroy,
+        ).pack(pady=(0, 14))
 
     def _handle_welcome_action(self, action: str):
         self._set_welcome_menu_active(action)
@@ -547,21 +594,11 @@ class JarvisApp(ctk.CTk):
             self._set_voice_return_enabled(True)
             self._toggle_voice()
             self._add_message(ASSISTANT_NAME, "Modo voz activo. Usa 'Menu principal' para volver.", is_bot=True)
-        elif action == "navegador":
-            self._set_voice_return_enabled(False)
-            self._process_input("abre gmail")
         elif action == "configuracion":
             self._set_voice_return_enabled(False)
             if not self._wake_mode:
                 self._toggle_wake_mode()
             self._add_message(ASSISTANT_NAME, "Configuracion rapida: wake mode activado.", is_bot=True)
-        elif action == "comandos":
-            self._set_voice_return_enabled(False)
-            self._add_message(
-                ASSISTANT_NAME,
-                "Comandos: abrir apps, abrir sitios web, buscar internet, volumen y energia (apagar/reiniciar/bloquear).",
-                is_bot=True,
-            )
 
     def _start_jarvis(self):
         if not self._welcome_active:
