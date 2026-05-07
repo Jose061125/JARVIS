@@ -15,8 +15,9 @@ _SETTINGS_PATH = Path(__file__).resolve().parent.parent / "settings.json"
 _LOCK = Lock()
 
 _DEFAULTS = {
-    "wake_mode_default": False,
     "wake_words": ", ".join(config.WAKE_WORDS),
+    "voice_guard_enabled": True,
+    "voice_guard_signature": [],
     "tts_voice": "es-MX-DaliaNeural",
     "tts_rate": "-6%",
     "speech_lang": config.SPEECH_LANG,
@@ -34,12 +35,22 @@ def _sanitize(raw: dict | None) -> dict:
     if not isinstance(raw, dict):
         return data
 
-    if isinstance(raw.get("wake_mode_default"), bool):
-        data["wake_mode_default"] = raw["wake_mode_default"]
-
     wake_words = raw.get("wake_words")
     if isinstance(wake_words, str) and wake_words.strip():
         data["wake_words"] = wake_words.strip()
+
+    voice_guard_enabled = raw.get("voice_guard_enabled")
+    if isinstance(voice_guard_enabled, bool):
+        data["voice_guard_enabled"] = voice_guard_enabled
+
+    voice_guard_signature = raw.get("voice_guard_signature")
+    if isinstance(voice_guard_signature, list):
+        cleaned_signature: list[float] = []
+        for item in voice_guard_signature:
+            if isinstance(item, (int, float)):
+                cleaned_signature.append(float(item))
+        if cleaned_signature:
+            data["voice_guard_signature"] = cleaned_signature
 
     tts_voice = raw.get("tts_voice")
     if isinstance(tts_voice, str) and tts_voice.strip():

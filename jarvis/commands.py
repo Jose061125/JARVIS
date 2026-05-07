@@ -7,6 +7,7 @@ import webbrowser
 import platform
 import os
 import shutil
+import re
 from urllib.parse import quote, quote_plus
 
 from jarvis.interaction_memory import (
@@ -135,6 +136,40 @@ def open_application(app_name: str) -> str:
         return f"Abriendo {app_name}..."
     except Exception as e:
         return f"No pude abrir {app_name}. Error: {e}"
+
+
+def open_multiple_applications(payload: str) -> str:
+    """Abre varias apps en una sola orden. Formato sugerido: app1|app2|app3."""
+    raw = (payload or "").strip()
+    if not raw:
+        return "No recibi aplicaciones para abrir."
+
+    if "|" in raw:
+        parts = [p.strip() for p in raw.split("|") if p.strip()]
+    else:
+        parts = [p.strip() for p in re.split(r"\s*(?:,| y | e | and )\s*", raw, flags=re.IGNORECASE) if p.strip()]
+
+    if not parts:
+        return "No pude identificar aplicaciones para abrir."
+
+    opened: list[str] = []
+    failed: list[str] = []
+
+    for app in parts:
+        result = open_application(app)
+        if result.lower().startswith("abriendo "):
+            opened.append(app)
+        else:
+            failed.append(f"{app}: {result}")
+
+    if opened and not failed:
+        return f"Listo, abri estas apps: {', '.join(opened)}."
+    if opened and failed:
+        return (
+            f"Abri: {', '.join(opened)}. "
+            f"No pude abrir: {' | '.join(failed)}"
+        )
+    return f"No pude abrir ninguna app. Detalle: {' | '.join(failed)}"
 
 
 def web_search(query: str) -> str:
@@ -409,6 +444,52 @@ def system_power(action: str) -> str:
     return f"Acción de energía no reconocida: {action}"
 
 
+def _execute_single_command(command_text: str) -> str | None:
+    command_text = command_text.strip()
+    if not command_text:
+        return None
+
+    if command_text.startswith("OPEN_APPS:"):
+        payload = command_text.split("OPEN_APPS:", 1)[1].strip()
+        return open_multiple_applications(payload)
+
+    if command_text.startswith("OPEN_APP:"):
+        app = command_text.split("OPEN_APP:", 1)[1].strip()
+        if "|" in app or re.search(r"\s(?:y|e|and)\s", app, flags=re.IGNORECASE):
+            return open_multiple_applications(app)
+        return open_application(app)
+
+    if command_text.startswith("WEB_SEARCH:"):
+        query = command_text.split("WEB_SEARCH:", 1)[1].strip()
+        return web_search(query)
+
+    if command_text.startswith("WEB_OPEN:"):
+        target = command_text.split("WEB_OPEN:", 1)[1].strip()
+        return open_website(target)
+
+    if command_text.startswith("MEDIA_PLAY:"):
+        payload = command_text.split("MEDIA_PLAY:", 1)[1].strip()
+        return play_media(payload)
+
+    if command_text.startswith("VOLUME:"):
+        action = command_text.split("VOLUME:", 1)[1].strip()
+        return control_volume(action)
+
+    if command_text.startswith("POWER:"):
+        action = command_text.split("POWER:", 1)[1].strip()
+        return system_power(action)
+
+    if command_text.startswith("MAIL_INBOX:"):
+        arg = command_text.split("MAIL_INBOX:", 1)[1].strip()
+        return gmail_inbox(arg)
+
+    if command_text.startswith("MAIL_SEND:"):
+        payload = command_text.split("MAIL_SEND:", 1)[1].strip()
+        return gmail_send(payload)
+
+    return None
+
+
 def handle_command(response: str) -> str | None:
     """
     Detecta si la respuesta del LLM es un comando especial y lo ejecuta.
@@ -416,36 +497,20 @@ def handle_command(response: str) -> str | None:
     """
     response = response.strip()
 
-    if response.startswith("OPEN_APP:"):
-        app = response.split("OPEN_APP:", 1)[1].strip()
-        return open_application(app)
+    if response.startswith("ACTIONS:"):
+        payload = response.split("ACTIONS:", 1)[1].strip()
+        actions = [a.strip() for a in re.split(r"\s*;;\s*", payload) if a.strip()]
+        if not actions:
+            return "No recibi acciones para ejecutar."
 
-    if response.startswith("WEB_SEARCH:"):
-        query = response.split("WEB_SEARCH:", 1)[1].strip()
-        return web_search(query)
+        summaries: list[str] = []
+        for idx, action in enumerate(actions, start=1):
+            result = _execute_single_command(action)
+            if result:
+                summaries.append(f"Accion {idx}: {result}")
+            else:
+                summaries.append(f"Accion {idx}: no reconocida ({action}).")
 
-    if response.startswith("WEB_OPEN:"):
-        target = response.split("WEB_OPEN:", 1)[1].strip()
-        return open_website(target)
+        return " ".join(summaries)
 
-    if response.startswith("MEDIA_PLAY:"):
-        payload = response.split("MEDIA_PLAY:", 1)[1].strip()
-        return play_media(payload)
-
-    if response.startswith("VOLUME:"):
-        action = response.split("VOLUME:", 1)[1].strip()
-        return control_volume(action)
-
-    if response.startswith("POWER:"):
-        action = response.split("POWER:", 1)[1].strip()
-        return system_power(action)
-
-    if response.startswith("MAIL_INBOX:"):
-        arg = response.split("MAIL_INBOX:", 1)[1].strip()
-        return gmail_inbox(arg)
-
-    if response.startswith("MAIL_SEND:"):
-        payload = response.split("MAIL_SEND:", 1)[1].strip()
-        return gmail_send(payload)
-
-    return None
+    return _execute_single_command(response)

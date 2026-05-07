@@ -8,16 +8,18 @@ from datetime import datetime
 import time
 import math
 import random
+import unicodedata
 import tkinter as tk
 from tkinter import messagebox
 import os
 
 from jarvis.brain import chat, clear_history
 from jarvis.tts import speak_async, speak_with_options_async
-from jarvis.stt import listen
+from jarvis.stt import listen, listen_with_audio
 from jarvis.commands import handle_command
 from jarvis.config import ASSISTANT_NAME
-from jarvis.settings import get_wake_words, load_settings, save_settings
+from jarvis.settings import get_setting, get_wake_words, load_settings, save_settings
+from jarvis.voice_guard import extract_voice_signature, verify_voice
 
 # ── Tema ────────────────────────────────────────────────────────────────────
 ctk.set_appearance_mode("dark")
@@ -37,6 +39,7 @@ class JarvisApp(ctk.CTk):
         self._wake_mode = False
         self._wake_thread: threading.Thread | None = None
         self._tts_thread: threading.Thread | None = None
+        self._always_listen_mode = True
         self._hud_mode = "idle"
         self._hud_phase = 0.0
         self._welcome_phase = 0.0
@@ -186,7 +189,7 @@ class JarvisApp(ctk.CTk):
 
         ctk.CTkLabel(
             self.welcome_card,
-            text="Presiona el microfono para hablar",
+            text="Habla directamente para comenzar",
             font=ctk.CTkFont(size=14),
             text_color="#9ba8c7",
         ).place(relx=0.5, rely=0.93, anchor="center")
@@ -647,17 +650,6 @@ class JarvisApp(ctk.CTk):
 
         ctk.CTkLabel(voice_card, text="VOZ", font=ctk.CTkFont(size=15, weight="bold"), text_color="#67e6ff").pack(anchor="w", padx=14, pady=(12, 8))
 
-        var_wake_default = tk.BooleanVar(value=bool(settings.get("wake_mode_default", False)))
-        wake_switch = ctk.CTkSwitch(
-            voice_card,
-            text="Iniciar con wake mode activado",
-            variable=var_wake_default,
-            onvalue=True,
-            offvalue=False,
-            progress_color="#2f52b0",
-        )
-        wake_switch.pack(anchor="w", padx=14, pady=(0, 8))
-
         ctk.CTkLabel(voice_card, text="Wake words (separadas por coma)", text_color="#a9bde5").pack(anchor="w", padx=14)
         wake_words_entry = ctk.CTkEntry(voice_card, height=34)
         wake_words_entry.pack(fill="x", padx=14, pady=(4, 8))
@@ -778,7 +770,6 @@ class JarvisApp(ctk.CTk):
                 return
 
             payload = {
-                "wake_mode_default": bool(var_wake_default.get()),
                 "wake_words": wake_words_value,
                 "tts_voice": tts_voice_menu.get().strip(),
                 "tts_rate": tts_rate_value,
@@ -794,8 +785,6 @@ class JarvisApp(ctk.CTk):
                 messagebox.showerror("Configuracion", f"No se pudo guardar: {exc}")
                 return
 
-            if not self._welcome_active and getattr(self, "main_frame", None):
-                self._set_wake_mode(bool(var_wake_default.get()), announce=False)
             info_label.configure(text="Ajustes guardados correctamente.")
             self._set_status("Configuracion actualizada") if getattr(self, "status_label", None) else None
 
@@ -855,8 +844,7 @@ class JarvisApp(ctk.CTk):
 
         if action == "voz":
             self._set_voice_return_enabled(True)
-            self._toggle_voice()
-            self._add_message(ASSISTANT_NAME, "Modo voz activo. Usa 'Menu principal' para volver.", is_bot=True)
+            self._add_message(ASSISTANT_NAME, "Modo voz activo en reposo continuo. Habla cuando quieras. Usa 'Menu principal' para volver.", is_bot=True)
 
     def _start_jarvis(self):
         if not self._welcome_active:
@@ -924,7 +912,7 @@ class JarvisApp(ctk.CTk):
         self._add_message(ASSISTANT_NAME, greeting, is_bot=True)
         self._tts_thread = speak_async(greeting)
         self.after(0, self._monitor_tts)
-        if bool(self._settings.get("wake_mode_default", False)):
+        if self._always_listen_mode:
             self.after(280, lambda: self._set_wake_mode(True, announce=False))
         self.after(220, self._run_pending_action)
 
@@ -982,17 +970,6 @@ class JarvisApp(ctk.CTk):
         self.back_menu_btn.pack(side="right", padx=(0, 8))
         self.back_menu_btn.pack_forget()
 
-        self.wake_btn = ctk.CTkButton(
-            header,
-            text="Wake OFF",
-            width=100,
-            height=30,
-            command=self._toggle_wake_mode,
-            fg_color="#3b2d58",
-            hover_color="#4c3a70",
-        )
-        self.wake_btn.pack(side="right", padx=(0, 8))
-
         # ── HUD reactivo ──
         hud_frame = ctk.CTkFrame(main, corner_radius=10, fg_color="#060a17")
         hud_frame.grid(row=1, column=0, sticky="nsew", padx=10, pady=(6, 5))
@@ -1048,18 +1025,6 @@ class JarvisApp(ctk.CTk):
             hover_color="#4268c8",
         )
         self.send_btn.grid(row=0, column=1, padx=(0, 5), pady=10)
-
-        self.voice_btn = ctk.CTkButton(
-            input_frame,
-            text="🎤",
-            width=50,
-            height=40,
-            corner_radius=20,
-            fg_color="#1f4b3a",
-            hover_color="#28624b",
-            command=self._toggle_voice,
-        )
-        self.voice_btn.grid(row=0, column=2, padx=(0, 10), pady=10)
 
     # ── Lógica de mensajes ───────────────────────────────────────────────────
 
@@ -1246,7 +1211,9 @@ class JarvisApp(ctk.CTk):
             self._set_status("Espera a que termine la respuesta actual...")
             return
         self._is_listening = True
-        self.voice_btn.configure(text="⏹", fg_color="#4a1a1a")
+        voice_btn = getattr(self, "voice_btn", None)
+        if voice_btn:
+            voice_btn.configure(text="⏹", fg_color="#4a1a1a")
         self._set_status("Escuchando...")
         self._set_hud_mode("listen")
         threading.Thread(target=self._listen_worker, daemon=True).start()
@@ -1254,7 +1221,9 @@ class JarvisApp(ctk.CTk):
     def _listen_worker(self):
         text = listen()
         self._is_listening = False
-        self.after(0, lambda: self.voice_btn.configure(text="🎤", fg_color="#1a3a4a"))
+        voice_btn = getattr(self, "voice_btn", None)
+        if voice_btn:
+            self.after(0, lambda: voice_btn.configure(text="🎤", fg_color="#1a3a4a"))
         if text:
             self.after(0, lambda: self._process_input(text))
         else:
@@ -1302,6 +1271,10 @@ class JarvisApp(ctk.CTk):
     # ── Wake word / manos libres ─────────────────────────────────────────────
 
     def _toggle_wake_mode(self):
+        if self._always_listen_mode:
+            self._set_wake_mode(True, announce=False)
+            self._set_status("Escucha en reposo activa siempre.")
+            return
         self._set_wake_mode(not self._wake_mode, announce=True)
 
     def _set_wake_mode(self, enabled: bool, announce: bool = True):
@@ -1317,12 +1290,21 @@ class JarvisApp(ctk.CTk):
 
         if self._wake_mode:
             if wake_btn:
-                wake_btn.configure(text="Wake ON", fg_color="#1a4a2d", hover_color="#2a6a3d")
+                if self._always_listen_mode:
+                    wake_btn.configure(text="Reposo AUTO", fg_color="#1a4a2d", hover_color="#2a6a3d")
+                else:
+                    wake_btn.configure(text="Wake ON", fg_color="#1a4a2d", hover_color="#2a6a3d")
             if main_ui_ready:
-                self._set_status(f"Wake mode activo. Di: {first_wake}")
+                if self._always_listen_mode:
+                    self._set_status("Reposo activo. Habla cuando quieras.")
+                else:
+                    self._set_status(f"Wake mode activo. Di: {first_wake}")
                 self._set_hud_mode("wake")
                 if announce:
-                    self._add_message(ASSISTANT_NAME, f"Modo manos libres activado. Di '{first_wake}' y luego tu orden.", is_bot=True)
+                    if self._always_listen_mode:
+                        self._add_message(ASSISTANT_NAME, "Escucha en reposo activada. Puedes hablarme directamente en cualquier momento.", is_bot=True)
+                    else:
+                        self._add_message(ASSISTANT_NAME, f"Modo manos libres activado. Di '{first_wake}' y luego tu orden.", is_bot=True)
             self._wake_thread = threading.Thread(target=self._wake_worker, daemon=True)
             self._wake_thread.start()
         else:
@@ -1349,30 +1331,93 @@ class JarvisApp(ctk.CTk):
                     return after
         return ""
 
+    def _normalize_text(self, value: str) -> str:
+        normalized = unicodedata.normalize("NFD", (value or "").strip().lower())
+        no_accents = "".join(ch for ch in normalized if unicodedata.category(ch) != "Mn")
+        return " ".join(no_accents.split())
+
+    def _is_presence_phrase(self, heard_text: str) -> bool:
+        normalized = self._normalize_text(heard_text)
+        return "jarvis estas ahi" in normalized
+
+    def _handle_voice_presence_check(self, wake_audio) -> bool:
+        if not bool(get_setting("voice_guard_enabled")):
+            return True
+
+        if wake_audio is None:
+            self.after(0, lambda: self._add_message(ASSISTANT_NAME, "No pude validar tu voz ahora. Intenta de nuevo diciendo 'jarvis estas ahi'.", is_bot=True))
+            return False
+
+        stored_signature = get_setting("voice_guard_signature") or []
+        if not stored_signature:
+            new_signature = extract_voice_signature(wake_audio)
+            if not new_signature:
+                self.after(0, lambda: self._add_message(ASSISTANT_NAME, "No pude registrar tu voz inicial. Repite 'jarvis estas ahi' un poco mas cerca del microfono.", is_bot=True))
+                return False
+
+            save_settings({"voice_guard_signature": new_signature})
+            self._settings = load_settings()
+            self.after(0, lambda: self._add_message(ASSISTANT_NAME, "Voz registrada. A partir de ahora usare tu frase para reconocerte.", is_bot=True))
+            return True
+
+        accepted, score = verify_voice(wake_audio, stored_signature, threshold=0.72)
+        if accepted:
+            return True
+
+        self.after(0, lambda: self._add_message(ASSISTANT_NAME, f"No reconoci tu voz (score {score:.2f}). Intenta otra vez con menos ruido.", is_bot=True))
+        return False
+
     def _wake_worker(self):
         while self._wake_mode:
             if self._is_listening or self._is_processing:
                 time.sleep(0.2)
                 continue
 
-            heard = listen(timeout=2, phrase_limit=4)
+            if self._tts_thread and self._tts_thread.is_alive():
+                time.sleep(0.2)
+                continue
+
+            heard, heard_audio = listen_with_audio(timeout=2, phrase_limit=4)
             if not heard:
                 continue
 
-            heard_lower = heard.lower()
-            if not any(w in heard_lower for w in get_wake_words()):
+            if self._is_presence_phrase(heard):
+                if not self._handle_voice_presence_check(heard_audio):
+                    self.after(0, lambda: self._set_status("No pude validar tu voz."))
+                    self.after(0, lambda: self._set_hud_mode("wake" if self._wake_mode else "idle"))
+                    continue
+
+                self.after(0, lambda: self._set_status("Te reconozco. Te escucho..."))
+                self.after(0, lambda: self._add_message(ASSISTANT_NAME, "Si, aqui estoy. Dime que necesitas.", is_bot=True))
+                self._tts_thread = speak_async("Si, aqui estoy. Dime que necesitas.")
+                self.after(0, self._monitor_tts)
+                self.after(0, lambda: self._set_hud_mode("listen"))
+
+                command_text = listen(timeout=6, phrase_limit=10)
+                if command_text:
+                    self.after(0, lambda txt=command_text: self._process_input(txt))
+                else:
+                    self.after(0, lambda: self._set_status("No escuche un comando despues de la activacion."))
+                    self.after(0, lambda: self._set_hud_mode("wake" if self._wake_mode else "idle"))
                 continue
 
-            self.after(0, lambda: self._set_status("Wake detectado. Te escucho..."))
-            self.after(0, lambda: self._set_hud_mode("listen"))
+            heard_lower = heard.lower()
+            if any(w in heard_lower for w in get_wake_words()):
+                self.after(0, lambda: self._set_status("Wake detectado. Te escucho..."))
+                self.after(0, lambda: self._set_hud_mode("listen"))
 
-            inline_command = self._extract_command_after_wake(heard)
-            command_text = inline_command if inline_command else listen(timeout=5, phrase_limit=9)
-            if command_text:
-                self.after(0, lambda txt=command_text: self._process_input(txt))
-            else:
-                self.after(0, lambda: self._set_status("No escuché el comando tras la palabra clave."))
-                self.after(0, lambda: self._set_hud_mode("wake" if self._wake_mode else "idle"))
+                inline_command = self._extract_command_after_wake(heard)
+                command_text = inline_command if inline_command else listen(timeout=5, phrase_limit=9)
+                if command_text:
+                    self.after(0, lambda txt=command_text: self._process_input(txt))
+                else:
+                    self.after(0, lambda: self._set_status("No escuche el comando tras la palabra clave."))
+                    self.after(0, lambda: self._set_hud_mode("wake" if self._wake_mode else "idle"))
+                continue
+
+            self.after(0, lambda: self._set_status("Te escucho..."))
+            self.after(0, lambda: self._set_hud_mode("listen"))
+            self.after(0, lambda txt=heard: self._process_input(txt))
 
     def _on_close(self):
         self._wake_mode = False
