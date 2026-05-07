@@ -44,7 +44,7 @@ def chat(user_message: str) -> str:
         model=model,
         messages=messages,
         temperature=0.7,
-        max_tokens=512,
+        max_tokens=1400,
     )
 
     reply = response.choices[0].message.content.strip()

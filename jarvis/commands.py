@@ -8,6 +8,11 @@ import platform
 import os
 import shutil
 import re
+import threading
+import time
+from datetime import datetime
+from pathlib import Path
+from urllib.request import Request, urlopen
 from urllib.parse import quote, quote_plus
 
 from jarvis.interaction_memory import (
@@ -16,6 +21,316 @@ from jarvis.interaction_memory import (
     build_site_confirmation,
 )
 from jarvis.gmail_service import read_inbox, send_email
+from jarvis.settings import get_setting
+
+
+def _default_documents_dir() -> Path:
+    home = Path.home()
+    for folder_name in ("Documents", "Documentos"):
+        candidate = home / folder_name
+        if candidate.exists():
+            return candidate
+    return home
+
+
+def _safe_filename(name: str, fallback: str = "documento") -> str:
+    cleaned = re.sub(r"[^a-zA-Z0-9._ -]+", "", (name or "").strip())
+    cleaned = cleaned.replace(" ", "_").strip("._")
+    return cleaned or fallback
+
+
+def _is_heading_line(line: str) -> bool:
+    stripped = line.strip()
+    if not stripped:
+        return False
+    if stripped.startswith(("# ", "## ", "### ")):
+        return True
+    return stripped.endswith(":") and len(stripped) <= 90
+
+
+def _heading_level(line: str) -> int:
+    stripped = line.strip()
+    if stripped.startswith("### "):
+        return 3
+    if stripped.startswith("## "):
+        return 2
+    return 1
+
+
+def _clean_heading_text(line: str) -> str:
+    stripped = line.strip()
+    if stripped.startswith("### "):
+        return stripped[4:].strip()
+    if stripped.startswith("## "):
+        return stripped[3:].strip()
+    if stripped.startswith("# "):
+        return stripped[2:].strip()
+    return stripped.rstrip(":").strip()
+
+
+def _write_structured_content(document, content: str) -> None:
+    pending_paragraph: list[str] = []
+
+    def flush_paragraph() -> None:
+        if not pending_paragraph:
+            return
+        paragraph = document.add_paragraph(" ".join(part.strip() for part in pending_paragraph if part.strip()))
+        paragraph.style = "Normal"
+        pending_paragraph.clear()
+
+    for raw_line in content.splitlines():
+        line = raw_line.strip()
+
+        if not line:
+            flush_paragraph()
+            continue
+
+        if _is_heading_line(line):
+            flush_paragraph()
+            document.add_heading(_clean_heading_text(line), level=_heading_level(line))
+            continue
+
+        if line.startswith(("- ", "* ", "• ")):
+            flush_paragraph()
+            bullet = document.add_paragraph(style="List Bullet")
+            bullet.add_run(line[2:].strip())
+            continue
+
+        if re.match(r"^\d+[\.)]\s+", line):
+            flush_paragraph()
+            numbered = document.add_paragraph(style="List Number")
+            numbered.add_run(re.sub(r"^\d+[\.)]\s+", "", line).strip())
+            continue
+
+        pending_paragraph.append(line)
+
+    flush_paragraph()
+
+
+def create_word_document(title: str, content: str) -> str:
+    """Crea un archivo .docx con el contenido solicitado y lo abre."""
+    try:
+        from docx import Document
+        from docx.enum.text import WD_ALIGN_PARAGRAPH
+        from docx.shared import Pt
+    except ImportError:
+        return "Falta instalar python-docx. Ejecuta: pip install python-docx"
+
+    title = (title or "Documento JARVIS").strip()
+    content = (content or "").strip()
+    if not content:
+        return "No recibi contenido para crear el documento de Word."
+
+    docs_dir = _default_documents_dir()
+    docs_dir.mkdir(parents=True, exist_ok=True)
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    file_name = f"{_safe_filename(title, fallback='documento_jarvis')}_{timestamp}.docx"
+    doc_path = docs_dir / file_name
+    author_name = str(get_setting("user_name") or "Usuario").strip() or "Usuario"
+    human_date = datetime.now().strftime("%d/%m/%Y %H:%M")
+
+    document = Document()
+    document.core_properties.author = author_name
+    document.core_properties.title = title
+
+    title_paragraph = document.add_paragraph()
+    title_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    title_run = title_paragraph.add_run(title)
+    title_run.bold = True
+    title_run.font.size = Pt(22)
+
+    subtitle_paragraph = document.add_paragraph()
+    subtitle_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    subtitle_run = subtitle_paragraph.add_run(f"Documento generado por {author_name}")
+    subtitle_run.italic = True
+    subtitle_run.font.size = Pt(11)
+
+    date_paragraph = document.add_paragraph()
+    date_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    date_run = date_paragraph.add_run(human_date)
+    date_run.font.size = Pt(10)
+
+    document.add_paragraph("")
+    _write_structured_content(document, content)
+    document.save(doc_path)
+
+    try:
+        system = platform.system()
+        if system == "Windows":
+            os.startfile(str(doc_path))
+        elif system == "Darwin":
+            subprocess.Popen(["open", str(doc_path)])
+        else:
+            opener = shutil.which("xdg-open")
+            if opener:
+                subprocess.Popen([opener, str(doc_path)])
+    except Exception:
+        pass
+
+    return f"Listo. Cree el documento de Word '{title}' y lo guarde en {doc_path}."
+
+
+def create_word_document_from_payload(payload: str) -> str:
+    """Procesa DOC_CREATE usando primera linea como titulo y el resto como contenido."""
+    raw = (payload or "").strip()
+    if not raw:
+        return "No recibi datos para crear el documento."
+
+    if "\n" in raw:
+        title_line, content = raw.split("\n", 1)
+        title = title_line.strip() or "Documento JARVIS"
+        return create_word_document(title, content)
+
+    if "|" in raw:
+        title, content = raw.split("|", 1)
+        return create_word_document(title, content)
+
+    return create_word_document("Documento JARVIS", raw)
+
+
+def parse_media_request(user_text: str) -> str | None:
+    """Detecta peticiones musicales comunes en lenguaje natural y devuelve payload MEDIA_PLAY."""
+    raw = (user_text or "").strip()
+    if not raw:
+        return None
+
+    lowered = raw.lower()
+    media_triggers = (
+        "pon ",
+        "ponme ",
+        "reproduce ",
+        "reproducir ",
+        "quiero escuchar",
+        "escucha ",
+        "busca musica",
+        "busca la cancion",
+        "pon la cancion",
+        "pon musica",
+        "pon un album",
+        "abre spotify y pon",
+        "abre youtube y pon",
+        "abre youtube music y pon",
+    )
+    if not any(trigger in lowered for trigger in media_triggers):
+        return None
+
+    platform_name = "youtube"
+    platform_patterns = (
+        ("youtube music", "youtube_music"),
+        ("youtube music", "youtube_music"),
+        ("yt music", "youtube_music"),
+        ("spotify", "spotify"),
+        ("youtube", "youtube"),
+        ("yt", "youtube"),
+    )
+    for marker, mapped in platform_patterns:
+        if marker in lowered:
+            platform_name = mapped
+            lowered = lowered.replace(marker, " ")
+            raw = re.sub(marker, " ", raw, flags=re.IGNORECASE)
+            break
+
+    query = raw
+    cleanup_patterns = [
+        r"\babre\b",
+        r"\bspotify\b",
+        r"\byoutube\s+music\b",
+        r"\byt\s+music\b",
+        r"\byoutube\b",
+        r"\byt\b",
+        r"\bponme\b",
+        r"\bpon\b",
+        r"\breproduce\b",
+        r"\breproducir\b",
+        r"\bquiero escuchar\b",
+        r"\bescuchar\b",
+        r"\bescucha\b",
+        r"\bbusca\b",
+        r"\bmusica\b",
+        r"\bmúsica\b",
+        r"\bla cancion\b",
+        r"\bla canción\b",
+        r"\bcancion\b",
+        r"\bcanción\b",
+        r"\bdel artista\b",
+        r"\bdel grupo\b",
+        r"\bde la banda\b",
+        r"\ben spotify\b",
+        r"\ben youtube music\b",
+        r"\ben youtube\b",
+    ]
+    for pattern in cleanup_patterns:
+        query = re.sub(pattern, " ", query, flags=re.IGNORECASE)
+
+    query = re.sub(r"\s+", " ", query).strip(" ,.;:-")
+    query = re.sub(r"^(y|e)\s+", "", query, flags=re.IGNORECASE)
+    query = re.sub(r"\s+(y|e|en)$", "", query, flags=re.IGNORECASE)
+    query = re.sub(r"\s+", " ", query).strip(" ,.;:-")
+    if len(query) < 2:
+        return None
+
+    return f"{platform_name}|{query}"
+
+
+def _find_youtube_first_video_url(query: str) -> str | None:
+    """Busca el primer video en resultados de YouTube y devuelve su URL."""
+    try:
+        search_url = f"https://www.youtube.com/results?search_query={quote_plus(query)}"
+        request = Request(
+            search_url,
+            headers={
+                "User-Agent": "Mozilla/5.0",
+                "Accept-Language": "es-ES,es;q=0.9,en;q=0.8",
+            },
+        )
+        with urlopen(request, timeout=8) as response:
+            html = response.read().decode("utf-8", errors="ignore")
+    except Exception:
+        return None
+
+    match = re.search(r'"videoId":"([^"]{11})"', html)
+    if not match:
+        return None
+    return f"https://www.youtube.com/watch?v={match.group(1)}"
+
+
+def _run_desktop_automation(task) -> bool:
+    """Ejecuta automatizacion de escritorio de forma segura y no bloqueante."""
+    try:
+        import pyautogui  # noqa: F401
+    except Exception:
+        return False
+
+    threading.Thread(target=task, daemon=True).start()
+    return True
+
+
+def _spotify_autoplay_task(query: str) -> None:
+    try:
+        import pyautogui
+
+        time.sleep(2.8)
+        pyautogui.hotkey("ctrl", "l")
+        time.sleep(0.3)
+        pyautogui.write(query, interval=0.02)
+        pyautogui.press("enter")
+        time.sleep(1.4)
+        pyautogui.press("tab", presses=3, interval=0.15)
+        pyautogui.press("enter")
+    except Exception:
+        return
+
+
+def _youtube_music_autoplay_task() -> None:
+    try:
+        import pyautogui
+
+        time.sleep(3.0)
+        pyautogui.press("tab", presses=6, interval=0.12)
+        pyautogui.press("enter")
+    except Exception:
+        return
 
 
 def open_application(app_name: str) -> str:
@@ -242,16 +557,24 @@ def play_media(payload: str) -> str:
         opened = webbrowser.open(spotify_uri)
         if not opened:
             webbrowser.open(spotify_web)
+        automated = _run_desktop_automation(lambda: _spotify_autoplay_task(query))
+        if automated:
+            return f"Intente reproducir {query} en Spotify automaticamente. Si no arranca solo, deja Spotify abierto y repitemelo." 
         return build_media_confirmation("spotify", query)
 
     if platform_name == "youtube":
-        youtube_url = f"https://www.youtube.com/results?search_query={quote_plus(query)}"
+        youtube_url = _find_youtube_first_video_url(query) or f"https://www.youtube.com/results?search_query={quote_plus(query)}"
         webbrowser.open(youtube_url)
+        if "watch?v=" in youtube_url:
+            return f"Reproduciendo {query} en YouTube." 
         return build_media_confirmation("youtube", query)
 
     if platform_name == "youtube_music":
         youtube_url = f"https://music.youtube.com/search?q={quote_plus(query)}"
         webbrowser.open(youtube_url)
+        automated = _run_desktop_automation(_youtube_music_autoplay_task)
+        if automated:
+            return f"Intente reproducir {query} en YouTube Music automaticamente." 
         return build_media_confirmation("youtube music", query)
 
     generic_url = f"https://www.google.com/search?q={quote_plus(query + ' ' + platform_name)}"
@@ -486,6 +809,10 @@ def _execute_single_command(command_text: str) -> str | None:
     if command_text.startswith("MAIL_SEND:"):
         payload = command_text.split("MAIL_SEND:", 1)[1].strip()
         return gmail_send(payload)
+
+    if command_text.startswith("DOC_CREATE:"):
+        payload = command_text.split("DOC_CREATE:", 1)[1]
+        return create_word_document_from_payload(payload)
 
     return None
 

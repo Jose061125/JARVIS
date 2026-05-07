@@ -13,8 +13,12 @@ import pygame
 from jarvis.settings import get_setting
 
 
+_stop_event = threading.Event()
+
+
 def speak(text: str) -> None:
     """Convierte texto a voz y lo reproduce. Bloquea hasta terminar."""
+    _stop_event.clear()
     asyncio.run(_speak_async(text))
 
 
@@ -40,6 +44,9 @@ def _play_audio(path: str) -> None:
     pygame.mixer.music.load(path)
     pygame.mixer.music.play()
     while pygame.mixer.music.get_busy():
+        if _stop_event.is_set():
+            pygame.mixer.music.stop()
+            break
         pygame.time.Clock().tick(10)
     pygame.mixer.music.stop()
     pygame.mixer.quit()
@@ -54,6 +61,7 @@ def speak_async(text: str) -> threading.Thread:
 
 def speak_with_options(text: str, voice: str, rate: str) -> None:
     """Reproduce una voz temporal sin modificar la configuración guardada."""
+    _stop_event.clear()
     asyncio.run(_speak_async_with_options(text, voice, rate))
 
 
@@ -77,3 +85,14 @@ def speak_with_options_async(text: str, voice: str, rate: str) -> threading.Thre
     t = threading.Thread(target=speak_with_options, args=(text, voice, rate), daemon=True)
     t.start()
     return t
+
+
+def stop_speaking() -> bool:
+    """Detiene la reproduccion actual si existe."""
+    try:
+        _stop_event.set()
+        if pygame.mixer.get_init():
+            pygame.mixer.music.stop()
+        return True
+    except pygame.error:
+        return False

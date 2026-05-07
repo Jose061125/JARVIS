@@ -14,9 +14,9 @@ from tkinter import messagebox
 import os
 
 from jarvis.brain import chat, clear_history
-from jarvis.tts import speak_async, speak_with_options_async
+from jarvis.tts import speak_async, speak_with_options_async, stop_speaking
 from jarvis.stt import listen, listen_with_audio
-from jarvis.commands import handle_command
+from jarvis.commands import handle_command, parse_media_request
 from jarvis.config import ASSISTANT_NAME
 from jarvis.settings import get_setting, get_wake_words, load_settings, save_settings
 from jarvis.voice_guard import extract_voice_signature, verify_voice
@@ -1233,6 +1233,9 @@ class JarvisApp(ctk.CTk):
     # ── Procesar input (texto o voz) ─────────────────────────────────────────
 
     def _process_input(self, user_text: str):
+        if self._is_stop_phrase(user_text):
+            if self._interrupt_current_speech(user_text):
+                return
         if self._is_processing:
             return
         self._is_processing = True
@@ -1244,7 +1247,11 @@ class JarvisApp(ctk.CTk):
 
     def _bot_reply_worker(self, user_text: str):
         try:
-            reply = chat(user_text)
+            local_media_payload = parse_media_request(user_text)
+            if local_media_payload:
+                reply = f"MEDIA_PLAY:{local_media_payload}"
+            else:
+                reply = chat(user_text)
 
             # ¿Es un comando del sistema?
             command_result = handle_command(reply)
@@ -1340,6 +1347,31 @@ class JarvisApp(ctk.CTk):
         normalized = self._normalize_text(heard_text)
         return "jarvis estas ahi" in normalized
 
+    def _is_stop_phrase(self, heard_text: str) -> bool:
+        normalized = self._normalize_text(heard_text)
+        return normalized in {
+            "para",
+            "parate",
+            "detente",
+            "callate",
+            "silencio",
+            "deja de hablar",
+            "ya basta",
+        }
+
+    def _interrupt_current_speech(self, heard_text: str | None = None) -> bool:
+        if not (self._tts_thread and self._tts_thread.is_alive()):
+            return False
+        if not stop_speaking():
+            return False
+
+        if heard_text:
+            self._add_message("Tú", heard_text, is_bot=False)
+        self._add_message(ASSISTANT_NAME, "De acuerdo, me detengo aqui.", is_bot=True)
+        self._set_status("Voz detenida")
+        self._set_hud_mode("wake" if self._wake_mode else "idle")
+        return True
+
     def _handle_voice_presence_check(self, wake_audio) -> bool:
         if not bool(get_setting("voice_guard_enabled")):
             return True
@@ -1373,12 +1405,15 @@ class JarvisApp(ctk.CTk):
                 time.sleep(0.2)
                 continue
 
-            if self._tts_thread and self._tts_thread.is_alive():
-                time.sleep(0.2)
-                continue
-
             heard, heard_audio = listen_with_audio(timeout=2, phrase_limit=4)
             if not heard:
+                continue
+
+            if self._is_stop_phrase(heard):
+                self.after(0, lambda txt=heard: self._interrupt_current_speech(txt))
+                continue
+
+            if self._tts_thread and self._tts_thread.is_alive():
                 continue
 
             if self._is_presence_phrase(heard):
