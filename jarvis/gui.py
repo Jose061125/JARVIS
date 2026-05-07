@@ -194,7 +194,7 @@ class JarvisApp(ctk.CTk):
         self.start_btn.place(relx=0.5, rely=0.84, anchor="center")
 
         self.right_panel = ctk.CTkFrame(self.welcome_frame, fg_color="#06102a", corner_radius=18, border_width=1, border_color="#1a315a")
-        self.right_panel.place(relx=0.89, rely=0.5, relwidth=0.20, relheight=0.92, anchor="center")
+        self.right_panel.place(relx=0.89, rely=0.5, relwidth=0.20, relheight=0.90, anchor="center")
         self.right_panel.bind("<Enter>", lambda _e: self._set_panel_hover(self.right_panel, True))
         self.right_panel.bind("<Leave>", lambda _e: self._set_panel_hover(self.right_panel, False))
 
@@ -203,21 +203,21 @@ class JarvisApp(ctk.CTk):
                 "title": "Estado del sistema",
                 "icon": "◉",
                 "status": "ONLINE",
-                "desc": "Todos los nucleos funcionando correctamente",
-                "metrics": ["CPU 98%", "RAM 64%", "VOICE ACTIVE"],
+                "desc": "Todos los nucleos funcionando correctamente.",
+                "metrics": ["CPU", "RAM", "VOICE"],
             },
             {
                 "title": "Capacidades activas",
                 "icon": "✦",
                 "status": "ACTIVE",
-                "desc": "Modulos inteligentes ejecutandose en tiempo real",
+                "desc": "Modulos inteligentes ejecutandose en tiempo real.",
                 "metrics": ["NLP", "AUTOMATION", "WEB CONTROL"],
             },
             {
                 "title": "Acceso rapido",
                 "icon": "⬢",
                 "status": "READY",
-                "desc": "Herramientas inteligentes disponibles",
+                "desc": "Herramientas inteligentes disponibles.",
                 "metrics": ["SEARCH", "COMMANDS", "ANALYTICS"],
             },
         ]
@@ -225,30 +225,29 @@ class JarvisApp(ctk.CTk):
         for idx, card_data in enumerate(info_cards):
             y = 0.16 + idx * 0.24
             card = ctk.CTkFrame(self.right_panel, fg_color="#0c1a3d", corner_radius=22, border_width=1, border_color="#1e4a89")
-            card.place(relx=0.5, rely=y, relwidth=0.90, relheight=0.21, anchor="center")
+            card.place(relx=0.5, rely=y, relwidth=0.90, relheight=0.20, anchor="center")
 
-            icon_box = ctk.CTkFrame(card, width=46, height=46, fg_color="#153463", corner_radius=16, border_width=1, border_color="#2b67a9")
-            icon_box.place(relx=0.09, rely=0.22, anchor="center")
-            ctk.CTkLabel(icon_box, text=card_data["icon"], font=ctk.CTkFont(size=20, weight="bold"), text_color="#67e6ff").place(relx=0.5, rely=0.5, anchor="center")
+            top_row = ctk.CTkFrame(card, fg_color="transparent")
+            top_row.pack(fill="x", padx=10, pady=(9, 4))
 
-            ctk.CTkLabel(card, text=card_data["title"], font=ctk.CTkFont(size=15, weight="bold"), text_color="#67e6ff").place(relx=0.21, rely=0.20, anchor="w")
+            icon_box = ctk.CTkFrame(top_row, width=34, height=34, fg_color="#153463", corner_radius=12, border_width=1, border_color="#2b67a9")
+            icon_box.pack(side="left", padx=(0, 8))
+            ctk.CTkLabel(icon_box, text=card_data["icon"], font=ctk.CTkFont(size=16, weight="bold"), text_color="#67e6ff").place(relx=0.5, rely=0.5, anchor="center")
 
-            ctk.CTkLabel(card, text="●", font=ctk.CTkFont(size=12, weight="bold"), text_color="#59f0c5").place(relx=0.78, rely=0.21, anchor="center")
-            ctk.CTkLabel(card, text=card_data["status"], font=ctk.CTkFont(size=11, weight="bold"), text_color="#59f0c5").place(relx=0.84, rely=0.21, anchor="center")
+            ctk.CTkLabel(top_row, text=card_data["title"], font=ctk.CTkFont(size=14, weight="bold"), text_color="#67e6ff").pack(side="left")
+            ctk.CTkLabel(top_row, text=f"● {card_data['status']}", font=ctk.CTkFont(size=10, weight="bold"), text_color="#59f0c5").pack(side="right")
 
-            ctk.CTkLabel(card, text=card_data["desc"], font=ctk.CTkFont(size=12), text_color="#c0cdef", wraplength=245, justify="left").place(relx=0.06, rely=0.52, anchor="w")
+            ctk.CTkLabel(card, text=card_data["desc"], font=ctk.CTkFont(size=11), text_color="#c0cdef", wraplength=230, justify="left").pack(anchor="w", padx=12, pady=(0, 6))
 
             chip_holder = ctk.CTkFrame(card, fg_color="transparent")
-            chip_holder.place(relx=0.06, rely=0.82, anchor="w")
-            chip_x = 0
+            chip_holder.pack(anchor="w", padx=12, pady=(0, 8))
             for metric in card_data["metrics"]:
-                chip = ctk.CTkFrame(chip_holder, width=max(56, 10 + len(metric) * 7), height=24, fg_color="#13366a", corner_radius=10, border_width=1, border_color="#2a5a9c")
-                chip.place(x=chip_x, y=0)
-                ctk.CTkLabel(chip, text=metric, font=ctk.CTkFont(size=10), text_color="#70e7ff").place(relx=0.5, rely=0.5, anchor="center")
-                chip_x += max(64, 18 + len(metric) * 7)
+                chip = ctk.CTkFrame(chip_holder, width=max(54, 12 + len(metric) * 6), height=22, fg_color="#13366a", corner_radius=9, border_width=1, border_color="#2a5a9c")
+                chip.pack(side="left", padx=(0, 6))
+                ctk.CTkLabel(chip, text=metric, font=ctk.CTkFont(size=9), text_color="#70e7ff").place(relx=0.5, rely=0.5, anchor="center")
 
         quote = ctk.CTkFrame(self.right_panel, fg_color="#10204c", corner_radius=16, border_width=1, border_color="#2a5dab")
-        quote.place(relx=0.5, rely=0.90, relwidth=0.90, relheight=0.14, anchor="center")
+        quote.place(relx=0.5, rely=0.90, relwidth=0.90, relheight=0.12, anchor="center")
         ctk.CTkLabel(
             quote,
             text="Escucha. Entiende. Conecta.",
