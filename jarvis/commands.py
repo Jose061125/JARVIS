@@ -6,8 +6,14 @@ import subprocess
 import webbrowser
 import platform
 import os
+import shutil
+from urllib.parse import quote, quote_plus
 
-from jarvis.interaction_memory import build_search_confirmation, build_site_confirmation
+from jarvis.interaction_memory import (
+    build_media_confirmation,
+    build_search_confirmation,
+    build_site_confirmation,
+)
 from jarvis.gmail_service import read_inbox, send_email
 
 
@@ -66,7 +72,42 @@ def open_application(app_name: str) -> str:
         "epic games": "epicgameslauncher.exe",
     }
 
-    executable = app_map.get(app_name, app_name)
+    linux_map = {
+        # Navegadores
+        "chrome": "google-chrome",
+        "google chrome": "google-chrome",
+        "edge": "microsoft-edge",
+        "microsoft edge": "microsoft-edge",
+        "firefox": "firefox",
+        "brave": "brave-browser",
+        "opera": "opera",
+        # Musica / entretenimiento
+        "spotify": "spotify",
+        "vlc": "vlc",
+        # Comunicacion
+        "discord": "discord",
+        "whatsapp": "https://web.whatsapp.com",
+        "telegram": "telegram-desktop",
+        "zoom": "zoom",
+        "teams": "teams-for-linux",
+        "microsoft teams": "teams-for-linux",
+        "skype": "skypeforlinux",
+        # Herramientas del sistema
+        "terminal": "x-terminal-emulator",
+        "explorador": "xdg-open .",
+        "explorador de archivos": "xdg-open .",
+        "explorer": "xdg-open .",
+        # Desarrollo
+        "vscode": "code",
+        "visual studio code": "code",
+        # Juegos
+        "steam": "steam",
+    }
+
+    if system == "Linux":
+        executable = linux_map.get(app_name, app_name)
+    else:
+        executable = app_map.get(app_name, app_name)
 
     try:
         if system == "Windows":
@@ -83,7 +124,14 @@ def open_application(app_name: str) -> str:
         elif system == "Darwin":  # macOS
             subprocess.Popen(["open", "-a", executable])
         else:  # Linux
-            subprocess.Popen([executable])
+            if executable.startswith("http://") or executable.startswith("https://"):
+                webbrowser.open(executable)
+            elif executable.startswith("xdg-open "):
+                subprocess.Popen(executable, shell=True)
+            else:
+                if shutil.which(executable) is None:
+                    return f"No encontre la app '{app_name}' en Linux (comando: {executable})."
+                subprocess.Popen([executable])
         return f"Abriendo {app_name}..."
     except Exception as e:
         return f"No pude abrir {app_name}. Error: {e}"
@@ -124,6 +172,58 @@ def open_website(target: str) -> str:
     return build_site_confirmation(target)
 
 
+def play_media(payload: str) -> str:
+    """Abre una reproduccion o busqueda multimedia en YouTube, YouTube Music o Spotify."""
+    raw = (payload or "").strip()
+    platform_name = "youtube"
+    query = raw
+
+    if "|" in raw:
+        maybe_platform, maybe_query = [part.strip() for part in raw.split("|", 1)]
+        if maybe_query:
+            platform_name = maybe_platform.lower() or "youtube"
+            query = maybe_query
+
+    query = query.strip()
+    platform_name = platform_name.strip().lower() or "youtube"
+
+    if not query:
+        return "No recibi el nombre de la cancion, artista o video para reproducir."
+
+    platform_aliases = {
+        "yt": "youtube",
+        "youtube.com": "youtube",
+        "youtube music": "youtube_music",
+        "yt music": "youtube_music",
+        "music youtube": "youtube_music",
+        "youtube_music": "youtube_music",
+        "spotify web": "spotify",
+    }
+    platform_name = platform_aliases.get(platform_name, platform_name)
+
+    if platform_name == "spotify":
+        spotify_uri = f"spotify:search:{query}"
+        spotify_web = f"https://open.spotify.com/search/{quote(query)}"
+        opened = webbrowser.open(spotify_uri)
+        if not opened:
+            webbrowser.open(spotify_web)
+        return build_media_confirmation("spotify", query)
+
+    if platform_name == "youtube":
+        youtube_url = f"https://www.youtube.com/results?search_query={quote_plus(query)}"
+        webbrowser.open(youtube_url)
+        return build_media_confirmation("youtube", query)
+
+    if platform_name == "youtube_music":
+        youtube_url = f"https://music.youtube.com/search?q={quote_plus(query)}"
+        webbrowser.open(youtube_url)
+        return build_media_confirmation("youtube music", query)
+
+    generic_url = f"https://www.google.com/search?q={quote_plus(query + ' ' + platform_name)}"
+    webbrowser.open(generic_url)
+    return f"No reconoci la plataforma {platform_name}. Te deje una busqueda web lista para {query}."
+
+
 def gmail_inbox(arg: str) -> str:
     """Revisa la bandeja de Gmail y da un resumen."""
     raw = (arg or "").strip()
@@ -152,12 +252,51 @@ def gmail_send(payload: str) -> str:
 
 
 def control_volume(action: str) -> str:
-    """Controla el volumen del sistema (Windows)."""
+    """Controla el volumen del sistema (Windows/Linux)."""
     action = action.strip().lower()
     system = platform.system()
 
+    if action not in {"up", "down", "mute"}:
+        return f"Accion de volumen no reconocida: {action}"
+
+    if system == "Linux":
+        try:
+            if shutil.which("wpctl"):
+                if action == "up":
+                    subprocess.Popen(["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", "5%+"])
+                    return "Volumen subido (Linux/wpctl)."
+                if action == "down":
+                    subprocess.Popen(["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", "5%-"])
+                    return "Volumen bajado (Linux/wpctl)."
+                subprocess.Popen(["wpctl", "set-mute", "@DEFAULT_AUDIO_SINK@", "toggle"])
+                return "Mute alternado (Linux/wpctl)."
+
+            if shutil.which("pactl"):
+                if action == "up":
+                    subprocess.Popen(["pactl", "set-sink-volume", "@DEFAULT_SINK@", "+5%"])
+                    return "Volumen subido (Linux/pactl)."
+                if action == "down":
+                    subprocess.Popen(["pactl", "set-sink-volume", "@DEFAULT_SINK@", "-5%"])
+                    return "Volumen bajado (Linux/pactl)."
+                subprocess.Popen(["pactl", "set-sink-mute", "@DEFAULT_SINK@", "toggle"])
+                return "Mute alternado (Linux/pactl)."
+
+            if shutil.which("amixer"):
+                if action == "up":
+                    subprocess.Popen(["amixer", "-D", "pulse", "sset", "Master", "5%+"])
+                    return "Volumen subido (Linux/amixer)."
+                if action == "down":
+                    subprocess.Popen(["amixer", "-D", "pulse", "sset", "Master", "5%-"])
+                    return "Volumen bajado (Linux/amixer)."
+                subprocess.Popen(["amixer", "-D", "pulse", "sset", "Master", "toggle"])
+                return "Mute alternado (Linux/amixer)."
+
+            return "No encontre utilidades de audio (wpctl/pactl/amixer) en Linux."
+        except Exception as e:
+            return f"Error controlando volumen en Linux: {e}"
+
     if system != "Windows":
-        return "Control de volumen solo disponible en Windows."
+        return "Control de volumen disponible en Windows y Linux."
 
     try:
         from ctypes import cast, POINTER
@@ -193,8 +332,59 @@ def system_power(action: str) -> str:
     action = action.strip().lower()
     system = platform.system()
 
+    if system == "Linux":
+        try:
+            if action == "shutdown":
+                if shutil.which("shutdown"):
+                    subprocess.Popen(["shutdown", "-h", "+1", "ECHONEX: apagado solicitado"])
+                    return "Apagando Linux en 1 minuto. Puedes cancelar con POWER:cancel_shutdown."
+                if shutil.which("systemctl"):
+                    subprocess.Popen(["systemctl", "poweroff"])
+                    return "Apagando Linux ahora (systemctl)."
+                return "No encontre comando para apagar en Linux."
+
+            if action == "restart":
+                if shutil.which("shutdown"):
+                    subprocess.Popen(["shutdown", "-r", "+1", "ECHONEX: reinicio solicitado"])
+                    return "Reiniciando Linux en 1 minuto. Puedes cancelar con POWER:cancel_shutdown."
+                if shutil.which("systemctl"):
+                    subprocess.Popen(["systemctl", "reboot"])
+                    return "Reiniciando Linux ahora (systemctl)."
+                return "No encontre comando para reiniciar en Linux."
+
+            if action == "sleep":
+                if shutil.which("systemctl"):
+                    subprocess.Popen(["systemctl", "suspend"])
+                    return "Suspendiendo Linux..."
+                return "No encontre systemctl para suspender en Linux."
+
+            if action == "lock":
+                if shutil.which("loginctl"):
+                    subprocess.Popen(["loginctl", "lock-session"])
+                    return "Bloqueando la pantalla en Linux..."
+                if shutil.which("gnome-screensaver-command"):
+                    subprocess.Popen(["gnome-screensaver-command", "-l"])
+                    return "Bloqueando la pantalla en Linux..."
+                if shutil.which("xdg-screensaver"):
+                    subprocess.Popen(["xdg-screensaver", "lock"])
+                    return "Bloqueando la pantalla en Linux..."
+                return "No encontre comando para bloquear pantalla en Linux."
+
+            if action == "unlock":
+                return "Linux no permite desbloquear automaticamente sin credenciales. Debes desbloquear manualmente."
+
+            if action == "cancel_shutdown":
+                if shutil.which("shutdown"):
+                    subprocess.Popen(["shutdown", "-c"])
+                    return "Apagado/reinicio cancelado en Linux."
+                return "No encontre comando shutdown para cancelar en Linux."
+
+            return f"Accion de energia no reconocida: {action}"
+        except Exception as e:
+            return f"Error ejecutando accion de energia en Linux: {e}"
+
     if system != "Windows":
-        return "Control de energía solo disponible en Windows."
+        return "Control de energia disponible en Windows y Linux."
 
     if action == "shutdown":
         subprocess.Popen("shutdown /s /t 10 /c \"ECHONEX: Apagando el equipo...\"", shell=True)
@@ -237,6 +427,10 @@ def handle_command(response: str) -> str | None:
     if response.startswith("WEB_OPEN:"):
         target = response.split("WEB_OPEN:", 1)[1].strip()
         return open_website(target)
+
+    if response.startswith("MEDIA_PLAY:"):
+        payload = response.split("MEDIA_PLAY:", 1)[1].strip()
+        return play_media(payload)
 
     if response.startswith("VOLUME:"):
         action = response.split("VOLUME:", 1)[1].strip()

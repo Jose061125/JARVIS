@@ -1279,7 +1279,10 @@ class JarvisApp(ctk.CTk):
 
             # ¿Es un comando del sistema?
             command_result = handle_command(reply)
-            display_text = command_result if command_result else reply
+            if command_result:
+                display_text = f"{command_result} ¿Necesitas algo mas o quieres hacer otra peticion?"
+            else:
+                display_text = reply
 
             self.after(0, lambda: self._add_message(ASSISTANT_NAME, display_text, is_bot=True))
             self.after(0, lambda: self._set_status("Listo"))
@@ -1329,6 +1332,23 @@ class JarvisApp(ctk.CTk):
                 self._set_status("Wake mode desactivado")
                 self._set_hud_mode("idle")
 
+    def _extract_command_after_wake(self, heard_text: str) -> str:
+        """Extrae la orden si viene en la misma frase que la wake word."""
+        heard = (heard_text or "").strip().lower()
+        if not heard:
+            return ""
+
+        for wake in get_wake_words():
+            wake_norm = wake.strip().lower()
+            if not wake_norm:
+                continue
+
+            if wake_norm in heard:
+                after = heard.split(wake_norm, 1)[1].strip(" ,.:;!?-_")
+                if after:
+                    return after
+        return ""
+
     def _wake_worker(self):
         while self._wake_mode:
             if self._is_listening or self._is_processing:
@@ -1345,7 +1365,9 @@ class JarvisApp(ctk.CTk):
 
             self.after(0, lambda: self._set_status("Wake detectado. Te escucho..."))
             self.after(0, lambda: self._set_hud_mode("listen"))
-            command_text = listen(timeout=5, phrase_limit=9)
+
+            inline_command = self._extract_command_after_wake(heard)
+            command_text = inline_command if inline_command else listen(timeout=5, phrase_limit=9)
             if command_text:
                 self.after(0, lambda txt=command_text: self._process_input(txt))
             else:

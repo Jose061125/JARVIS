@@ -128,3 +128,30 @@ def build_site_confirmation(target: str) -> str:
         ]
 
     return choose_non_repetitive("web_open", options)
+
+
+def build_media_confirmation(platform: str, query: str) -> str:
+    clean_platform = platform.strip().lower() or "youtube"
+    clean_query = query.strip() or "contenido"
+    count_target, _ = record_request("media_play", f"{clean_platform}:{clean_query}")
+
+    if count_target <= 1:
+        options = [
+            f"Listo, deje la busqueda de {clean_query} en {clean_platform}.",
+            f"Hecho, ya te abri {clean_query} en {clean_platform}.",
+            f"Perfecto, la reproduccion busqueda de {clean_query} ya esta lanzada en {clean_platform}.",
+        ]
+    elif count_target <= 4:
+        options = [
+            f"Listo, volvi a abrir {clean_query} en {clean_platform}.",
+            f"Hecho, relance {clean_query} en {clean_platform}.",
+            f"Perfecto, otra vez deje {clean_query} preparado en {clean_platform}.",
+        ]
+    else:
+        options = [
+            f"{clean_query} ya esta abierto en {clean_platform}, como de costumbre.",
+            f"Hecho, acceso recurrente a {clean_query} en {clean_platform} completado.",
+            f"Listo, volvi a dejar {clean_query} en {clean_platform}.",
+        ]
+
+    return choose_non_repetitive("media_play", options)
