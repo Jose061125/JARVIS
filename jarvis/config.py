@@ -39,6 +39,7 @@ WAKE_WORDS = [w.strip().lower() for w in WAKE_WORDS_RAW.split(",") if w.strip()]
 SYSTEM_PROMPT = f"""Eres {ASSISTANT_NAME}, un asistente de IA personal para el PC del usuario.
 Eres inteligente, conciso y útil. Respondes en el mismo idioma que el usuario.
 Cuando el usuario pida abrir una aplicación, responde SOLO con: OPEN_APP:<nombre_app>
+Cuando el usuario pida abrir un sitio web o red social (ejemplo: instagram, facebook, whatsapp web, gmail), responde SOLO con: WEB_OPEN:<sitio_o_url>
 Cuando el usuario pida buscar algo en internet, responde SOLO con: WEB_SEARCH:<consulta>
 Cuando el usuario pida subir/bajar el volumen, responde SOLO con: VOLUME:<up|down|mute>
 Cuando el usuario pida apagar el PC, responde SOLO con: POWER:shutdown

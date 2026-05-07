@@ -94,6 +94,33 @@ def web_search(query: str) -> str:
     return f"Buscando '{query}' en el navegador..."
 
 
+def open_website(target: str) -> str:
+    """Abre un sitio web directo en el navegador predeterminado."""
+    target = target.strip().lower()
+
+    site_map = {
+        "instagram": "https://www.instagram.com",
+        "facebook": "https://www.facebook.com",
+        "whatsapp": "https://web.whatsapp.com",
+        "whatsapp web": "https://web.whatsapp.com",
+        "gmail": "https://mail.google.com",
+        "youtube": "https://www.youtube.com",
+        "x": "https://x.com",
+        "twitter": "https://x.com",
+        "tiktok": "https://www.tiktok.com",
+        "linkedin": "https://www.linkedin.com",
+        "github": "https://github.com",
+        "netflix": "https://www.netflix.com",
+    }
+
+    url = site_map.get(target, target)
+    if not url.startswith(("http://", "https://")):
+        url = f"https://{url}"
+
+    webbrowser.open(url)
+    return f"Abriendo {target} en el navegador..."
+
+
 def control_volume(action: str) -> str:
     """Controla el volumen del sistema (Windows)."""
     action = action.strip().lower()
@@ -176,6 +203,10 @@ def handle_command(response: str) -> str | None:
     if response.startswith("WEB_SEARCH:"):
         query = response.split("WEB_SEARCH:", 1)[1].strip()
         return web_search(query)
+
+    if response.startswith("WEB_OPEN:"):
+        target = response.split("WEB_OPEN:", 1)[1].strip()
+        return open_website(target)
 
     if response.startswith("VOLUME:"):
         action = response.split("VOLUME:", 1)[1].strip()
