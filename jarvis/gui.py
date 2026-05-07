@@ -38,6 +38,7 @@ class JarvisApp(ctk.CTk):
         self._hud_phase = 0.0
         self._welcome_phase = 0.0
         self._welcome_active = True
+        self._hud_active = False
         self._start_transition_step = 0
         self._pending_start_action: str | None = None
         self._welcome_menu_buttons: dict[str, ctk.CTkButton] = {}
@@ -46,6 +47,10 @@ class JarvisApp(ctk.CTk):
         self._build_welcome_screen()
 
     def _build_welcome_screen(self):
+        if getattr(self, "main_frame", None):
+            self.main_frame.destroy()
+            self.main_frame = None
+
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(0, weight=1)
 
@@ -535,17 +540,23 @@ class JarvisApp(ctk.CTk):
         action = self._pending_start_action
         self._pending_start_action = None
         if not action:
+            self._set_voice_return_enabled(False)
             return
 
         if action == "voz":
+            self._set_voice_return_enabled(True)
             self._toggle_voice()
+            self._add_message(ASSISTANT_NAME, "Modo voz activo. Usa 'Menu principal' para volver.", is_bot=True)
         elif action == "navegador":
+            self._set_voice_return_enabled(False)
             self._process_input("abre gmail")
         elif action == "configuracion":
+            self._set_voice_return_enabled(False)
             if not self._wake_mode:
                 self._toggle_wake_mode()
             self._add_message(ASSISTANT_NAME, "Configuracion rapida: wake mode activado.", is_bot=True)
         elif action == "comandos":
+            self._set_voice_return_enabled(False)
             self._add_message(
                 ASSISTANT_NAME,
                 "Comandos: abrir apps, abrir sitios web, buscar internet, volumen y energia (apagar/reiniciar/bloquear).",
@@ -577,6 +588,7 @@ class JarvisApp(ctk.CTk):
         self._welcome_active = False
         self.welcome_frame.destroy()
         self._build_ui()
+        self._hud_active = True
         self._animate_hud()
         self._add_message(ASSISTANT_NAME, f"Hola, soy {ASSISTANT_NAME}. ¿En qué puedo ayudarte?", is_bot=True)
         self.after(220, self._run_pending_action)
@@ -589,6 +601,7 @@ class JarvisApp(ctk.CTk):
 
         # ── Marco principal ──
         main = ctk.CTkFrame(self, corner_radius=0)
+        self.main_frame = main
         main.grid(row=0, column=0, sticky="nsew")
         main.grid_rowconfigure(1, weight=1)
         main.grid_columnconfigure(0, weight=1)
@@ -621,6 +634,18 @@ class JarvisApp(ctk.CTk):
             fg_color="#27314f",
             hover_color="#344064",
         ).pack(side="right", padx=10)
+
+        self.back_menu_btn = ctk.CTkButton(
+            header,
+            text="Menu principal",
+            width=130,
+            height=30,
+            command=self._return_to_main_menu,
+            fg_color="#2a3f7a",
+            hover_color="#3656a3",
+        )
+        self.back_menu_btn.pack(side="right", padx=(0, 8))
+        self.back_menu_btn.pack_forget()
 
         self.wake_btn = ctk.CTkButton(
             header,
@@ -825,9 +850,34 @@ class JarvisApp(ctk.CTk):
         canvas.create_text(int(w * 0.12), int(h * 0.84), text="71%", fill="#28d7ff", font=("Segoe UI", 24))
 
     def _animate_hud(self):
+        if not self._hud_active:
+            return
         self._hud_phase += 0.11
-        self._draw_hud()
+        try:
+            self._draw_hud()
+        except tk.TclError:
+            return
         self.after(45, self._animate_hud)
+
+    def _set_voice_return_enabled(self, enabled: bool):
+        if not getattr(self, "back_menu_btn", None):
+            return
+        if enabled:
+            self.back_menu_btn.pack(side="right", padx=(0, 8))
+        else:
+            self.back_menu_btn.pack_forget()
+
+    def _return_to_main_menu(self):
+        self._hud_active = False
+        self._wake_mode = False
+        self._pending_start_action = None
+        if getattr(self, "main_frame", None):
+            self.main_frame.destroy()
+            self.main_frame = None
+
+        self._welcome_phase = 0.0
+        self._welcome_active = True
+        self._build_welcome_screen()
 
     def _monitor_tts(self):
         if self._tts_thread and self._tts_thread.is_alive():
