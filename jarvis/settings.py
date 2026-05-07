@@ -17,11 +17,13 @@ _LOCK = Lock()
 _DEFAULTS = {
     "wake_mode_default": False,
     "wake_words": ", ".join(config.WAKE_WORDS),
-    "tts_voice": config.TTS_VOICE,
-    "tts_rate": config.TTS_RATE,
+    "tts_voice": "es-MX-DaliaNeural",
+    "tts_rate": "-6%",
     "speech_lang": config.SPEECH_LANG,
     "groq_model": config.GROQ_MODEL,
     "response_style": "normal",
+    "user_name": "Usuario",
+    "announce_datetime_on_start": True,
 }
 
 _runtime_settings = dict(_DEFAULTS)
@@ -58,6 +60,14 @@ def _sanitize(raw: dict | None) -> dict:
     response_style = raw.get("response_style")
     if response_style in {"breve", "normal", "detallado"}:
         data["response_style"] = response_style
+
+    user_name = raw.get("user_name")
+    if isinstance(user_name, str) and user_name.strip():
+        data["user_name"] = user_name.strip()
+
+    announce_datetime = raw.get("announce_datetime_on_start")
+    if isinstance(announce_datetime, bool):
+        data["announce_datetime_on_start"] = announce_datetime
 
     return data
 

@@ -50,3 +50,30 @@ def speak_async(text: str) -> threading.Thread:
     t = threading.Thread(target=speak, args=(text,), daemon=True)
     t.start()
     return t
+
+
+def speak_with_options(text: str, voice: str, rate: str) -> None:
+    """Reproduce una voz temporal sin modificar la configuración guardada."""
+    asyncio.run(_speak_async_with_options(text, voice, rate))
+
+
+async def _speak_async_with_options(text: str, voice: str, rate: str) -> None:
+    communicate = edge_tts.Communicate(text, voice, rate=rate)
+    with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
+        tmp_path = f.name
+
+    try:
+        await communicate.save(tmp_path)
+        _play_audio(tmp_path)
+    finally:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+
+
+def speak_with_options_async(text: str, voice: str, rate: str) -> threading.Thread:
+    """Previsualiza una voz temporal en un hilo separado."""
+    t = threading.Thread(target=speak_with_options, args=(text, voice, rate), daemon=True)
+    t.start()
+    return t

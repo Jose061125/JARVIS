@@ -7,6 +7,9 @@ import webbrowser
 import platform
 import os
 
+from jarvis.interaction_memory import build_search_confirmation, build_site_confirmation
+from jarvis.gmail_service import read_inbox, send_email
+
 
 def open_application(app_name: str) -> str:
     """Intenta abrir una aplicación por nombre."""
@@ -91,7 +94,7 @@ def web_search(query: str) -> str:
     query = query.strip()
     url = f"https://www.google.com/search?q={query.replace(' ', '+')}"
     webbrowser.open(url)
-    return f"Buscando '{query}' en el navegador..."
+    return build_search_confirmation(query)
 
 
 def open_website(target: str) -> str:
@@ -118,7 +121,34 @@ def open_website(target: str) -> str:
         url = f"https://{url}"
 
     webbrowser.open(url)
-    return f"Abriendo {target} en el navegador..."
+    return build_site_confirmation(target)
+
+
+def gmail_inbox(arg: str) -> str:
+    """Revisa la bandeja de Gmail y da un resumen."""
+    raw = (arg or "").strip()
+    max_results = 5
+    if raw:
+        try:
+            max_results = int(raw)
+        except ValueError:
+            max_results = 5
+
+    # Tambien abre Gmail para que el usuario vea la bandeja al instante.
+    webbrowser.open("https://mail.google.com/mail/u/0/#inbox")
+    return read_inbox(max_results=max_results)
+
+
+def gmail_send(payload: str) -> str:
+    """Envia correo. Formato: to|subject|body"""
+    parts = [p.strip() for p in (payload or "").split("|", 2)]
+    if len(parts) < 3:
+        return (
+            "Formato de envio invalido. Usa: MAIL_SEND:destinatario@correo.com|Asunto|Mensaje"
+        )
+
+    to_email, subject, body = parts
+    return send_email(to_email=to_email, subject=subject, body=body)
 
 
 def control_volume(action: str) -> str:
@@ -215,5 +245,13 @@ def handle_command(response: str) -> str | None:
     if response.startswith("POWER:"):
         action = response.split("POWER:", 1)[1].strip()
         return system_power(action)
+
+    if response.startswith("MAIL_INBOX:"):
+        arg = response.split("MAIL_INBOX:", 1)[1].strip()
+        return gmail_inbox(arg)
+
+    if response.startswith("MAIL_SEND:"):
+        payload = response.split("MAIL_SEND:", 1)[1].strip()
+        return gmail_send(payload)
 
     return None

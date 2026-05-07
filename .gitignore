@@ -6,6 +6,10 @@ build/
 *.spec
 .env
 settings.json
+interaction_memory.json
+gmail_token.json
+gmail_credentials.json
+credentials.json
 jarvis/__pycache__/
 pilot_architecture/node_modules/
 pilot_architecture/dist/

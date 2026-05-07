@@ -10,9 +10,10 @@ import math
 import random
 import tkinter as tk
 from tkinter import messagebox
+import os
 
 from jarvis.brain import chat, clear_history
-from jarvis.tts import speak_async
+from jarvis.tts import speak_async, speak_with_options_async
 from jarvis.stt import listen
 from jarvis.commands import handle_command
 from jarvis.config import ASSISTANT_NAME
@@ -665,18 +666,46 @@ class JarvisApp(ctk.CTk):
         ctk.CTkLabel(voice_card, text="Voz TTS", text_color="#a9bde5").pack(anchor="w", padx=14)
         tts_voice_menu = ctk.CTkOptionMenu(
             voice_card,
-            values=["es-ES-AlvaroNeural", "es-ES-ElviraNeural", "en-US-GuyNeural", "en-GB-RyanNeural"],
+            values=[
+                "es-MX-DaliaNeural",
+                "es-CO-SalomeNeural",
+                "es-ES-ElviraNeural",
+                "es-ES-AlvaroNeural",
+                "en-US-JennyNeural",
+                "en-US-GuyNeural",
+            ],
             fg_color="#243f85",
             button_color="#3559b8",
             button_hover_color="#4067ca",
         )
         tts_voice_menu.pack(fill="x", padx=14, pady=(4, 8))
-        tts_voice_menu.set(str(settings.get("tts_voice", "es-ES-AlvaroNeural")))
+        tts_voice_menu.set(str(settings.get("tts_voice", "es-MX-DaliaNeural")))
 
         ctk.CTkLabel(voice_card, text="Velocidad de voz (ej: -10%, +0%, +15%)", text_color="#a9bde5").pack(anchor="w", padx=14)
         tts_rate_entry = ctk.CTkEntry(voice_card, height=34)
         tts_rate_entry.pack(fill="x", padx=14, pady=(4, 12))
         tts_rate_entry.insert(0, str(settings.get("tts_rate", "+0%")))
+
+        def _preview_voice():
+            preview_rate = tts_rate_entry.get().strip() or "+0%"
+            if not preview_rate.endswith("%"):
+                messagebox.showwarning("Configuracion", "Para probar voz, la velocidad debe terminar en % (ej: -6%).")
+                return
+
+            preview_voice = tts_voice_menu.get().strip()
+            preview_text = "Hola, esta es mi voz actual de prueba."
+            self._tts_thread = speak_with_options_async(preview_text, preview_voice, preview_rate)
+            self.after(0, self._monitor_tts)
+
+        ctk.CTkButton(
+            voice_card,
+            text="Probar voz",
+            width=130,
+            height=34,
+            fg_color="#3158b6",
+            hover_color="#3f6dd8",
+            command=_preview_voice,
+        ).pack(anchor="w", padx=14, pady=(0, 12))
 
         ctk.CTkLabel(ai_card, text="IA", font=ctk.CTkFont(size=15, weight="bold"), text_color="#67e6ff").pack(anchor="w", padx=14, pady=(12, 8))
 
@@ -708,6 +737,22 @@ class JarvisApp(ctk.CTk):
         style_menu.set(str(settings.get("response_style", "normal")))
 
         ctk.CTkLabel(system_card, text="SISTEMA", font=ctk.CTkFont(size=15, weight="bold"), text_color="#67e6ff").pack(anchor="w", padx=14, pady=(12, 6))
+        ctk.CTkLabel(system_card, text="Tu nombre", text_color="#a9bde5").pack(anchor="w", padx=14)
+        user_name_entry = ctk.CTkEntry(system_card, height=34)
+        user_name_entry.pack(fill="x", padx=14, pady=(4, 8))
+        user_name_entry.insert(0, str(settings.get("user_name", "Usuario")))
+
+        announce_var = tk.BooleanVar(value=bool(settings.get("announce_datetime_on_start", True)))
+        announce_switch = ctk.CTkSwitch(
+            system_card,
+            text="Saludar con fecha y hora al iniciar",
+            variable=announce_var,
+            onvalue=True,
+            offvalue=False,
+            progress_color="#2f52b0",
+        )
+        announce_switch.pack(anchor="w", padx=14, pady=(0, 8))
+
         ctk.CTkLabel(
             system_card,
             text="Los ajustes se guardan en settings.json y se aplican sin romper tu interfaz actual.",
@@ -740,6 +785,8 @@ class JarvisApp(ctk.CTk):
                 "speech_lang": speech_lang_menu.get().strip(),
                 "groq_model": groq_model_entry.get().strip() or "llama-3.3-70b-versatile",
                 "response_style": style_menu.get().strip(),
+                "user_name": user_name_entry.get().strip() or "Usuario",
+                "announce_datetime_on_start": bool(announce_var.get()),
             }
             try:
                 self._settings = save_settings(payload)
@@ -818,6 +865,41 @@ class JarvisApp(ctk.CTk):
         self._start_transition_step = 0
         self._run_start_transition()
 
+    def _build_start_greeting(self) -> str:
+        now = datetime.now()
+        user_name = str(self._settings.get("user_name") or "Usuario").strip()
+        if user_name.lower() == "usuario":
+            os_user = os.environ.get("USERNAME") or os.environ.get("USER")
+            if os_user:
+                user_name = os_user
+
+        if not bool(self._settings.get("announce_datetime_on_start", True)):
+            return f"Hola {user_name}, en que te puedo ayudar hoy?"
+
+        days = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"]
+        months = [
+            "enero",
+            "febrero",
+            "marzo",
+            "abril",
+            "mayo",
+            "junio",
+            "julio",
+            "agosto",
+            "septiembre",
+            "octubre",
+            "noviembre",
+            "diciembre",
+        ]
+
+        day_name = days[now.weekday()]
+        month_name = months[now.month - 1]
+        time_txt = now.strftime("%H:%M")
+        return (
+            f"Hola {user_name}, en que te puedo ayudar hoy? "
+            f"Hoy es {day_name} {now.day} de {month_name} y son las {time_txt}."
+        )
+
     def _run_start_transition(self):
         self._start_transition_step += 1
         t = self._start_transition_step
@@ -838,7 +920,10 @@ class JarvisApp(ctk.CTk):
         self._build_ui()
         self._hud_active = True
         self._animate_hud()
-        self._add_message(ASSISTANT_NAME, f"Hola, soy {ASSISTANT_NAME}. ¿En qué puedo ayudarte?", is_bot=True)
+        greeting = self._build_start_greeting()
+        self._add_message(ASSISTANT_NAME, greeting, is_bot=True)
+        self._tts_thread = speak_async(greeting)
+        self.after(0, self._monitor_tts)
         if bool(self._settings.get("wake_mode_default", False)):
             self.after(280, lambda: self._set_wake_mode(True, announce=False))
         self.after(220, self._run_pending_action)
@@ -1093,11 +1178,18 @@ class JarvisApp(ctk.CTk):
             "speak": "HABLANDO",
             "wake": "WAKE MODE",
         }
+
+        # Insignia de marca en HUD (reemplaza textos decorativos antiguos)
+        logo_x, logo_y = int(w * 0.16), int(h * 0.17)
+        logo_r = max(26, int(min(w, h) * 0.055))
+        canvas.create_oval(logo_x - logo_r - 7, logo_y - logo_r - 7, logo_x + logo_r + 7, logo_y + logo_r + 7, outline="#123a62", width=2)
+        canvas.create_oval(logo_x - logo_r, logo_y - logo_r, logo_x + logo_r, logo_y + logo_r, outline="#28d7ff", width=2)
+        canvas.create_text(logo_x, logo_y - 1, text=ASSISTANT_NAME[:1].upper(), fill="#77ecff", font=("Segoe UI", 20, "bold"))
+        canvas.create_text(logo_x + logo_r + 62, logo_y - 8, text="ECHONEX", fill="#5de7ff", font=("Segoe UI", 14, "bold"), anchor="w")
+        canvas.create_text(logo_x + logo_r + 62, logo_y + 11, text="NEURAL CORE", fill="#8ea7d8", font=("Segoe UI", 10), anchor="w")
+
         canvas.create_text(cx, cy - 10, text=ASSISTANT_NAME, fill="#b7c7e8", font=("Segoe UI", 18, "bold"))
         canvas.create_text(cx, cy + 20, text=label_by_mode.get(self._hud_mode, "IDLE"), fill=color, font=("Segoe UI", 13, "bold"))
-        canvas.create_text(int(w * 0.15), int(h * 0.16), text="HI-TECH INTERFACE", fill="#1ed7ff", font=("Segoe UI", 15))
-        canvas.create_text(int(w * 0.84), int(h * 0.18), text="43%", fill="#28d7ff", font=("Segoe UI", 24))
-        canvas.create_text(int(w * 0.12), int(h * 0.84), text="71%", fill="#28d7ff", font=("Segoe UI", 24))
 
     def _animate_hud(self):
         if not self._hud_active:
