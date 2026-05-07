@@ -1,11 +1,12 @@
 """
-Módulo de comandos del sistema: abrir apps, buscar en internet, controlar volumen.
+Módulo de comandos del sistema: abrir apps, buscar en internet, controlar volumen, apagar PC.
 """
 
 import subprocess
 import webbrowser
 import platform
 import sys
+import os
 
 
 def open_application(app_name: str) -> str:
@@ -15,26 +16,52 @@ def open_application(app_name: str) -> str:
 
     # Mapa de nombres comunes → ejecutables
     app_map = {
-        "chrome": "chrome" if system != "Windows" else "chrome.exe",
-        "google chrome": "chrome",
-        "firefox": "firefox",
+        # Navegadores
+        "chrome": "chrome.exe",
+        "google chrome": "chrome.exe",
+        "edge": "msedge.exe",
+        "microsoft edge": "msedge.exe",
+        "firefox": "firefox.exe",
+        "brave": "brave.exe",
+        "opera": "opera.exe",
+        # Música / entretenimiento
+        "spotify": "spotify.exe",
+        "vlc": "vlc.exe",
+        # Comunicación
+        "discord": "discord.exe",
+        "whatsapp": "whatsapp.exe",
+        "telegram": "telegram.exe",
+        "zoom": "zoom.exe",
+        "teams": "teams.exe",
+        "microsoft teams": "teams.exe",
+        "skype": "skype.exe",
+        # Ofimática
+        "word": "winword.exe",
+        "excel": "excel.exe",
+        "powerpoint": "powerpnt.exe",
+        "outlook": "outlook.exe",
+        # Herramientas del sistema
         "notepad": "notepad.exe",
         "bloc de notas": "notepad.exe",
         "calculadora": "calc.exe",
         "calculator": "calc.exe",
         "explorador": "explorer.exe",
+        "explorador de archivos": "explorer.exe",
         "explorer": "explorer.exe",
         "paint": "mspaint.exe",
-        "word": "winword.exe",
-        "excel": "excel.exe",
-        "spotify": "spotify.exe",
-        "discord": "discord.exe",
-        "vscode": "code",
-        "visual studio code": "code",
         "cmd": "cmd.exe",
         "terminal": "cmd.exe",
-        "taskmgr": "taskmgr.exe",
         "administrador de tareas": "taskmgr.exe",
+        "task manager": "taskmgr.exe",
+        "panel de control": "control.exe",
+        "configuracion": "ms-settings:",
+        "configuración": "ms-settings:",
+        # Desarrollo
+        "vscode": "code",
+        "visual studio code": "code",
+        # Juegos
+        "steam": "steam.exe",
+        "epic games": "epicgameslauncher.exe",
     }
 
     executable = app_map.get(app_name, app_name)
@@ -96,6 +123,32 @@ def control_volume(action: str) -> str:
         return f"Error controlando volumen: {e}"
 
 
+def system_power(action: str) -> str:
+    """Controla el estado del sistema: apagar, reiniciar, suspender, bloquear."""
+    action = action.strip().lower()
+    system = platform.system()
+
+    if system != "Windows":
+        return "Control de energía solo disponible en Windows."
+
+    if action == "shutdown":
+        subprocess.Popen("shutdown /s /t 10 /c \"JARVIS: Apagando el equipo...\"", shell=True)
+        return "Apagando el equipo en 10 segundos. Escribe 'shutdown /a' en CMD para cancelar."
+    elif action == "restart":
+        subprocess.Popen("shutdown /r /t 10 /c \"JARVIS: Reiniciando el equipo...\"", shell=True)
+        return "Reiniciando el equipo en 10 segundos. Escribe 'shutdown /a' en CMD para cancelar."
+    elif action == "sleep":
+        subprocess.Popen("rundll32.exe powrprof.dll,SetSuspendState 0,1,0", shell=True)
+        return "Suspendiendo el equipo..."
+    elif action == "lock":
+        subprocess.Popen("rundll32.exe user32.dll,LockWorkStation", shell=True)
+        return "Bloqueando la pantalla..."
+    elif action == "cancel_shutdown":
+        subprocess.Popen("shutdown /a", shell=True)
+        return "Apagado/reinicio cancelado."
+    return f"Acción de energía no reconocida: {action}"
+
+
 def handle_command(response: str) -> str | None:
     """
     Detecta si la respuesta del LLM es un comando especial y lo ejecuta.
@@ -114,5 +167,9 @@ def handle_command(response: str) -> str | None:
     if response.startswith("VOLUME:"):
         action = response.split("VOLUME:", 1)[1].strip()
         return control_volume(action)
+
+    if response.startswith("POWER:"):
+        action = response.split("POWER:", 1)[1].strip()
+        return system_power(action)
 
     return None
