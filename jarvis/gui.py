@@ -6,6 +6,9 @@ import threading
 import customtkinter as ctk
 from datetime import datetime
 import time
+import math
+import random
+import tkinter as tk
 
 from jarvis.brain import chat, clear_history
 from jarvis.tts import speak_async
@@ -40,9 +43,12 @@ class JarvisApp(ctk.CTk):
         self._wake_mode = False
         self._wake_thread: threading.Thread | None = None
         self._tts_thread: threading.Thread | None = None
+        self._hud_mode = "idle"
+        self._hud_phase = 0.0
 
         self.protocol("WM_DELETE_WINDOW", self._on_close)
         self._build_ui()
+        self._animate_hud()
         self._add_message("JARVIS", f"Hola, soy {ASSISTANT_NAME}. ¿En qué puedo ayudarte?", is_bot=True)
 
     # ── Construcción de la UI ────────────────────────────────────────────────
@@ -54,7 +60,7 @@ class JarvisApp(ctk.CTk):
         # ── Marco principal ──
         main = ctk.CTkFrame(self, corner_radius=0)
         main.grid(row=0, column=0, sticky="nsew")
-        main.grid_rowconfigure(1, weight=1)
+        main.grid_rowconfigure(2, weight=1)
         main.grid_columnconfigure(0, weight=1)
 
         # ── Header ──
@@ -97,9 +103,23 @@ class JarvisApp(ctk.CTk):
         )
         self.wake_btn.pack(side="right", padx=(0, 8))
 
+        # ── HUD reactivo ──
+        hud_frame = ctk.CTkFrame(main, corner_radius=10, fg_color="#060a17")
+        hud_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=(6, 5))
+        hud_frame.grid_columnconfigure(0, weight=1)
+        self.hud_canvas = tk.Canvas(
+            hud_frame,
+            height=210,
+            bg="#060a17",
+            highlightthickness=0,
+            bd=0,
+        )
+        self.hud_canvas.grid(row=0, column=0, sticky="ew")
+        self.hud_canvas.bind("<Configure>", lambda _e: self._draw_hud())
+
         # ── Área de chat ──
         self.chat_box = ctk.CTkScrollableFrame(main, corner_radius=10, fg_color="#070b18")
-        self.chat_box.grid(row=1, column=0, sticky="nsew", padx=10, pady=5)
+        self.chat_box.grid(row=2, column=0, sticky="nsew", padx=10, pady=5)
         self.chat_box.grid_columnconfigure(0, weight=1)
 
         # ── Barra de estado ──
@@ -107,11 +127,11 @@ class JarvisApp(ctk.CTk):
             main, text="Listo", font=ctk.CTkFont(size=12),
             text_color="#8b98ba"
         )
-        self.status_label.grid(row=2, column=0, sticky="w", padx=15)
+        self.status_label.grid(row=3, column=0, sticky="w", padx=15)
 
         # ── Acciones rápidas ──
         actions_frame = ctk.CTkFrame(main, height=56, corner_radius=0, fg_color="#0d1328")
-        actions_frame.grid(row=3, column=0, sticky="ew")
+        actions_frame.grid(row=4, column=0, sticky="ew")
         actions_frame.grid_columnconfigure(0, weight=1)
 
         actions_row = ctk.CTkFrame(actions_frame, fg_color="transparent")
@@ -138,7 +158,7 @@ class JarvisApp(ctk.CTk):
 
         # ── Panel de entrada ──
         input_frame = ctk.CTkFrame(main, height=60, corner_radius=0, fg_color="#0b1022")
-        input_frame.grid(row=4, column=0, sticky="ew", padx=0, pady=0)
+        input_frame.grid(row=5, column=0, sticky="ew", padx=0, pady=0)
         input_frame.grid_columnconfigure(0, weight=1)
         input_frame.grid_propagate(False)
 
@@ -213,6 +233,96 @@ class JarvisApp(ctk.CTk):
     def _set_status(self, text: str):
         self.status_label.configure(text=text)
 
+    def _set_hud_mode(self, mode: str):
+        self._hud_mode = mode
+
+    def _draw_hud(self):
+        canvas = self.hud_canvas
+        canvas.delete("all")
+        w = max(420, canvas.winfo_width())
+        h = max(190, canvas.winfo_height())
+        cx, cy = w // 2, h // 2
+
+        mode_colors = {
+            "idle": "#28d7ff",
+            "listen": "#3dff9a",
+            "think": "#ffcf4a",
+            "speak": "#2ee6a6",
+            "wake": "#c17cff",
+        }
+        color = mode_colors.get(self._hud_mode, "#28d7ff")
+
+        pulse = 7 + 8 * (0.5 + 0.5 * math.sin(self._hud_phase * 2.0))
+        if self._hud_mode == "idle":
+            pulse *= 0.45
+        elif self._hud_mode == "wake":
+            pulse *= 0.7
+        elif self._hud_mode == "think":
+            pulse *= 1.15
+        elif self._hud_mode == "speak":
+            pulse *= 1.3
+        elif self._hud_mode == "listen":
+            pulse *= 1.45
+
+        # Anillos principales
+        canvas.create_oval(cx - 88, cy - 88, cx + 88, cy + 88, outline="#12304d", width=2)
+        canvas.create_oval(cx - 70, cy - 70, cx + 70, cy + 70, outline="#143a5f", width=2)
+        canvas.create_oval(cx - 48, cy - 48, cx + 48, cy + 48, outline=color, width=3)
+
+        # Segmentos exteriores tipo ecualizador radial
+        bars = 54
+        for i in range(bars):
+            angle = (2 * math.pi * i / bars) + (self._hud_phase * 0.28)
+            wave = 0.5 + 0.5 * math.sin(self._hud_phase * 2.8 + i * 0.35)
+            jitter = random.uniform(0.0, 0.12)
+            amp = (9 + pulse) * (wave + jitter)
+            if self._hud_mode in ("idle", "wake"):
+                amp *= 0.55
+
+            r1 = 95
+            r2 = r1 + amp
+            x1 = cx + math.cos(angle) * r1
+            y1 = cy + math.sin(angle) * r1
+            x2 = cx + math.cos(angle) * r2
+            y2 = cy + math.sin(angle) * r2
+            canvas.create_line(x1, y1, x2, y2, fill=color, width=2)
+
+        # Arco de progreso animado
+        extent = 70 + 40 * math.sin(self._hud_phase)
+        canvas.create_arc(
+            cx - 110,
+            cy - 110,
+            cx + 110,
+            cy + 110,
+            start=(self._hud_phase * 45) % 360,
+            extent=extent,
+            style=tk.ARC,
+            outline=color,
+            width=3,
+        )
+
+        label_by_mode = {
+            "idle": "IDLE",
+            "listen": "ESCUCHANDO",
+            "think": "PROCESANDO",
+            "speak": "HABLANDO",
+            "wake": "WAKE MODE",
+        }
+        canvas.create_text(cx, cy - 6, text=ASSISTANT_NAME, fill="#b7c7e8", font=("Segoe UI", 14, "bold"))
+        canvas.create_text(cx, cy + 18, text=label_by_mode.get(self._hud_mode, "IDLE"), fill=color, font=("Segoe UI", 11, "bold"))
+
+    def _animate_hud(self):
+        self._hud_phase += 0.11
+        self._draw_hud()
+        self.after(45, self._animate_hud)
+
+    def _monitor_tts(self):
+        if self._tts_thread and self._tts_thread.is_alive():
+            self._set_hud_mode("speak")
+            self.after(120, self._monitor_tts)
+            return
+        self._set_hud_mode("wake" if self._wake_mode else "idle")
+
     # ── Enviar texto ─────────────────────────────────────────────────────────
 
     def _send_text(self):
@@ -233,6 +343,7 @@ class JarvisApp(ctk.CTk):
         self._is_listening = True
         self.voice_btn.configure(text="⏹", fg_color="#4a1a1a")
         self._set_status("Escuchando...")
+        self._set_hud_mode("listen")
         threading.Thread(target=self._listen_worker, daemon=True).start()
 
     def _listen_worker(self):
@@ -243,6 +354,7 @@ class JarvisApp(ctk.CTk):
             self.after(0, lambda: self._process_input(text))
         else:
             self.after(0, lambda: self._set_status("No entendí. Intenta de nuevo."))
+            self.after(0, lambda: self._set_hud_mode("wake" if self._wake_mode else "idle"))
 
     # ── Procesar input (texto o voz) ─────────────────────────────────────────
 
@@ -252,6 +364,7 @@ class JarvisApp(ctk.CTk):
         self._is_processing = True
         self._add_message("Tú", user_text, is_bot=False)
         self._set_status("Pensando y ejecutando...")
+        self._set_hud_mode("think")
         self.send_btn.configure(state="disabled")
         threading.Thread(target=self._bot_reply_worker, args=(user_text,), daemon=True).start()
 
@@ -268,10 +381,12 @@ class JarvisApp(ctk.CTk):
 
             # Hablar la respuesta
             self._tts_thread = speak_async(display_text)
+            self.after(0, self._monitor_tts)
         except Exception as e:
             error_msg = f"Error: {e}"
             self.after(0, lambda: self._add_message(ASSISTANT_NAME, error_msg, is_bot=True))
             self.after(0, lambda: self._set_status("Error"))
+            self.after(0, lambda: self._set_hud_mode("wake" if self._wake_mode else "idle"))
         finally:
             self._is_processing = False
             self.after(0, lambda: self.send_btn.configure(state="normal"))
@@ -283,12 +398,14 @@ class JarvisApp(ctk.CTk):
         if self._wake_mode:
             self.wake_btn.configure(text="Wake ON", fg_color="#1a4a2d", hover_color="#2a6a3d")
             self._set_status("Wake mode activo. Di: Jarvis")
+            self._set_hud_mode("wake")
             self._add_message(ASSISTANT_NAME, "Modo manos libres activado. Di 'Jarvis' y luego tu orden.", is_bot=True)
             self._wake_thread = threading.Thread(target=self._wake_worker, daemon=True)
             self._wake_thread.start()
         else:
             self.wake_btn.configure(text="Wake OFF", fg_color="#3a2d44", hover_color="#4d3a5c")
             self._set_status("Wake mode desactivado")
+            self._set_hud_mode("idle")
 
     def _wake_worker(self):
         while self._wake_mode:
@@ -305,11 +422,13 @@ class JarvisApp(ctk.CTk):
                 continue
 
             self.after(0, lambda: self._set_status("Wake detectado. Te escucho..."))
+            self.after(0, lambda: self._set_hud_mode("listen"))
             command_text = listen(timeout=5, phrase_limit=9)
             if command_text:
                 self.after(0, lambda txt=command_text: self._process_input(txt))
             else:
                 self.after(0, lambda: self._set_status("No escuché el comando tras la palabra clave."))
+                self.after(0, lambda: self._set_hud_mode("wake" if self._wake_mode else "idle"))
 
     def _on_close(self):
         self._wake_mode = False
