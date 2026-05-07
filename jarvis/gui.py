@@ -39,6 +39,8 @@ class JarvisApp(ctk.CTk):
         self._welcome_phase = 0.0
         self._welcome_active = True
         self._start_transition_step = 0
+        self._pending_start_action: str | None = None
+        self._welcome_menu_buttons: dict[str, ctk.CTkButton] = {}
 
         self.protocol("WM_DELETE_WINDOW", self._on_close)
         self._build_welcome_screen()
@@ -77,17 +79,17 @@ class JarvisApp(ctk.CTk):
         ).place(relx=0.5, rely=0.24, anchor="center")
 
         menu_items = [
-            ("⌂", "Inicio"),
-            ("◉", "Voz"),
-            ("⊞", "Comandos"),
-            ("◎", "Navegador"),
-            ("⚙", "Configuracion"),
-            ("i", "Acerca de"),
+            ("🏠", "Inicio", "inicio"),
+            ("🎙", "Voz", "voz"),
+            ("⌨", "Comandos", "comandos"),
+            ("🌐", "Navegador", "navegador"),
+            ("⚙", "Configuracion", "configuracion"),
+            ("👤", "Acerca de", "acerca"),
         ]
-        for idx, (icon, item) in enumerate(menu_items):
+        for idx, (icon, item, key) in enumerate(menu_items):
             y = 0.30 + idx * 0.087
             active = idx == 0
-            ctk.CTkButton(
+            btn = ctk.CTkButton(
                 self.left_panel,
                 text=f"{icon}   {item}",
                 width=168,
@@ -97,8 +99,10 @@ class JarvisApp(ctk.CTk):
                 hover_color="#3c64dd" if active else "#193466",
                 text_color="#eef4ff" if active else "#abc1ee",
                 font=ctk.CTkFont(size=14, weight="bold" if active else "normal"),
-                command=lambda: None,
-            ).place(relx=0.5, rely=y, anchor="center")
+                command=lambda action=key: self._handle_welcome_action(action),
+            )
+            btn.place(relx=0.5, rely=y, anchor="center")
+            self._welcome_menu_buttons[key] = btn
 
         ctk.CTkFrame(self.left_panel, width=168, height=1, fg_color="#254b86").place(relx=0.5, rely=0.85, anchor="center")
 
@@ -481,8 +485,78 @@ class JarvisApp(ctk.CTk):
 
         self.after(45, self._animate_welcome)
 
+    def _set_welcome_menu_active(self, action: str):
+        for key, btn in self._welcome_menu_buttons.items():
+            is_active = key == action
+            btn.configure(
+                fg_color="#2f4ec6" if is_active else "#0f214a",
+                hover_color="#3c64dd" if is_active else "#193466",
+                text_color="#eef4ff" if is_active else "#abc1ee",
+                font=ctk.CTkFont(size=14, weight="bold" if is_active else "normal"),
+            )
+
+    def _show_about_dialog(self):
+        dlg = ctk.CTkToplevel(self)
+        dlg.title(f"Acerca de {ASSISTANT_NAME}")
+        dlg.geometry("460x260")
+        dlg.resizable(False, False)
+        dlg.grab_set()
+
+        frame = ctk.CTkFrame(dlg, fg_color="#0b1631", corner_radius=14)
+        frame.pack(fill="both", expand=True, padx=12, pady=12)
+
+        ctk.CTkLabel(frame, text=ASSISTANT_NAME, font=ctk.CTkFont(size=28, weight="bold"), text_color="#67e6ff").pack(pady=(16, 8))
+        ctk.CTkLabel(
+            frame,
+            text=(
+                "Asistente IA para PC con voz, automatizacion y navegador.\n"
+                "Puede abrir apps/sitios, ejecutar comandos y responder en tiempo real."
+            ),
+            justify="center",
+            text_color="#c5d5ff",
+            font=ctk.CTkFont(size=13),
+        ).pack(pady=8)
+        ctk.CTkButton(frame, text="Cerrar", width=120, command=dlg.destroy).pack(pady=(16, 10))
+
+    def _handle_welcome_action(self, action: str):
+        self._set_welcome_menu_active(action)
+
+        if action == "acerca":
+            self._show_about_dialog()
+            return
+
+        if action == "inicio":
+            return
+
+        self._pending_start_action = action
+        self._start_jarvis()
+
+    def _run_pending_action(self):
+        action = self._pending_start_action
+        self._pending_start_action = None
+        if not action:
+            return
+
+        if action == "voz":
+            self._toggle_voice()
+        elif action == "navegador":
+            self._process_input("abre gmail")
+        elif action == "configuracion":
+            if not self._wake_mode:
+                self._toggle_wake_mode()
+            self._add_message(ASSISTANT_NAME, "Configuracion rapida: wake mode activado.", is_bot=True)
+        elif action == "comandos":
+            self._add_message(
+                ASSISTANT_NAME,
+                "Comandos: abrir apps, abrir sitios web, buscar internet, volumen y energia (apagar/reiniciar/bloquear).",
+                is_bot=True,
+            )
+
     def _start_jarvis(self):
+        if not self._welcome_active:
+            return
         self.start_btn.configure(state="disabled", text="Inicializando...")
+        self._start_transition_step = 0
         self._run_start_transition()
 
     def _run_start_transition(self):
@@ -505,6 +579,7 @@ class JarvisApp(ctk.CTk):
         self._build_ui()
         self._animate_hud()
         self._add_message(ASSISTANT_NAME, f"Hola, soy {ASSISTANT_NAME}. ¿En qué puedo ayudarte?", is_bot=True)
+        self.after(220, self._run_pending_action)
 
     # ── Construcción de la UI ────────────────────────────────────────────────
 
