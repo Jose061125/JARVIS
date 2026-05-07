@@ -1,6 +1,6 @@
 @echo off
 REM ============================================================
-REM  Script para construir JARVIS.exe con PyInstaller
+REM  Script para construir ECHONEX.exe con PyInstaller
 REM  Ejecutar en Windows con: build.bat
 REM ============================================================
 
@@ -9,11 +9,11 @@ pip install -r requirements.txt
 pip install pyinstaller
 
 echo.
-echo Construyendo JARVIS.exe...
+echo Construyendo ECHONEX.exe...
 pyinstaller ^
     --onefile ^
     --noconsole ^
-    --name "JARVIS" ^
+    --name "ECHONEX" ^
     --icon "jarvis/assets/icon.ico" ^
     --add-data "jarvis/assets;jarvis/assets" ^
     --hidden-import "customtkinter" ^
@@ -24,5 +24,5 @@ pyinstaller ^
     main.py
 
 echo.
-echo Listo! Encuentra JARVIS.exe en la carpeta dist/
+echo Listo! Encuentra ECHONEX.exe en la carpeta dist/
 pause

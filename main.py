@@ -1,5 +1,5 @@
 """
-Punto de entrada principal de JARVIS.
+Punto de entrada principal de ECHONEX.
 Ejecutar: python main.py
 """
 

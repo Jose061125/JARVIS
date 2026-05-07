@@ -1,5 +1,5 @@
 #!/bin/bash
-# Script para construir JARVIS.exe con PyInstaller (desde Linux/Mac hacia Windows)
+# Script para construir ECHONEX.exe con PyInstaller (desde Linux/Mac hacia Windows)
 # O para correr en Linux/Mac directamente
 
 echo "Instalando dependencias..."
@@ -11,7 +11,7 @@ echo "Construyendo ejecutable..."
 pyinstaller \
     --onefile \
     --noconsole \
-    --name "JARVIS" \
+    --name "ECHONEX" \
     --add-data "jarvis/assets:jarvis/assets" \
     --hidden-import "customtkinter" \
     --hidden-import "edge_tts" \
@@ -21,4 +21,4 @@ pyinstaller \
     main.py
 
 echo ""
-echo "Listo! Encuentra JARVIS en la carpeta dist/"
+echo "Listo! Encuentra ECHONEX en la carpeta dist/"

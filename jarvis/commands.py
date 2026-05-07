@@ -167,10 +167,10 @@ def system_power(action: str) -> str:
         return "Control de energía solo disponible en Windows."
 
     if action == "shutdown":
-        subprocess.Popen("shutdown /s /t 10 /c \"JARVIS: Apagando el equipo...\"", shell=True)
+        subprocess.Popen("shutdown /s /t 10 /c \"ECHONEX: Apagando el equipo...\"", shell=True)
         return "Apagando el equipo en 10 segundos. Escribe 'shutdown /a' en CMD para cancelar."
     elif action == "restart":
-        subprocess.Popen("shutdown /r /t 10 /c \"JARVIS: Reiniciando el equipo...\"", shell=True)
+        subprocess.Popen("shutdown /r /t 10 /c \"ECHONEX: Reiniciando el equipo...\"", shell=True)
         return "Reiniciando el equipo en 10 segundos. Escribe 'shutdown /a' en CMD para cancelar."
     elif action == "sleep":
         subprocess.Popen("rundll32.exe powrprof.dll,SetSuspendState 0,1,0", shell=True)

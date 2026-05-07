@@ -1,5 +1,5 @@
 # ============================================================
-#  JARVIS - Configuración
+#  ECHONEX - Configuración
 # ============================================================
 
 import os
@@ -19,14 +19,14 @@ GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "TU_API_KEY_AQUI")
 # Modelo a usar (llama-3.3-70b-versatile es el más potente gratis)
 GROQ_MODEL = "llama-3.3-70b-versatile"
 
-# Voz de JARVIS (edge-tts)
+# Voz de ECHONEX (edge-tts)
 # Opciones en español: es-ES-AlvaroNeural (hombre), es-ES-ElviraNeural (mujer)
 # Opciones en inglés: en-US-GuyNeural, en-GB-RyanNeural
 TTS_VOICE = "es-ES-AlvaroNeural"
 TTS_RATE = "+0%"   # Velocidad: -20% más lento, +20% más rápido
 
 # Nombre del asistente
-ASSISTANT_NAME = "JARVIS"
+ASSISTANT_NAME = "ECHONEX"
 
 # Idioma para reconocimiento de voz ("es-ES" o "en-US")
 SPEECH_LANG = "es-ES"

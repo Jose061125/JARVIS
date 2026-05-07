@@ -1,5 +1,5 @@
 """
-Interfaz gráfica principal de JARVIS usando customtkinter.
+Interfaz gráfica principal de ECHONEX usando customtkinter.
 """
 
 import threading
@@ -133,7 +133,7 @@ class JarvisApp(ctk.CTk):
 
         self.start_btn = ctk.CTkButton(
             self.welcome_card,
-            text="Iniciar JARVIS",
+            text="Iniciar ECHONEX",
             width=230,
             height=50,
             corner_radius=24,
@@ -311,7 +311,7 @@ class JarvisApp(ctk.CTk):
         self.welcome_frame.destroy()
         self._build_ui()
         self._animate_hud()
-        self._add_message("JARVIS", f"Hola, soy {ASSISTANT_NAME}. ¿En qué puedo ayudarte?", is_bot=True)
+        self._add_message(ASSISTANT_NAME, f"Hola, soy {ASSISTANT_NAME}. ¿En qué puedo ayudarte?", is_bot=True)
 
     # ── Construcción de la UI ────────────────────────────────────────────────
 
