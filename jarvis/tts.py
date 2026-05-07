@@ -10,7 +10,7 @@ import tempfile
 import edge_tts
 import pygame
 
-from jarvis.config import TTS_VOICE, TTS_RATE
+from jarvis.settings import get_setting
 
 
 def speak(text: str) -> None:
@@ -19,7 +19,9 @@ def speak(text: str) -> None:
 
 
 async def _speak_async(text: str) -> None:
-    communicate = edge_tts.Communicate(text, TTS_VOICE, rate=TTS_RATE)
+    tts_voice = str(get_setting("tts_voice") or "es-ES-AlvaroNeural")
+    tts_rate = str(get_setting("tts_rate") or "+0%")
+    communicate = edge_tts.Communicate(text, tts_voice, rate=tts_rate)
     with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as f:
         tmp_path = f.name
 

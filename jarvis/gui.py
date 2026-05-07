@@ -9,12 +9,14 @@ import time
 import math
 import random
 import tkinter as tk
+from tkinter import messagebox
 
 from jarvis.brain import chat, clear_history
 from jarvis.tts import speak_async
 from jarvis.stt import listen
 from jarvis.commands import handle_command
-from jarvis.config import ASSISTANT_NAME, WAKE_WORDS
+from jarvis.config import ASSISTANT_NAME
+from jarvis.settings import get_wake_words, load_settings, save_settings
 
 # ── Tema ────────────────────────────────────────────────────────────────────
 ctk.set_appearance_mode("dark")
@@ -42,6 +44,7 @@ class JarvisApp(ctk.CTk):
         self._start_transition_step = 0
         self._pending_start_action: str | None = None
         self._welcome_menu_buttons: dict[str, ctk.CTkButton] = {}
+        self._settings = load_settings()
 
         self.protocol("WM_DELETE_WINDOW", self._on_close)
         self._build_welcome_screen()
@@ -568,13 +571,226 @@ class JarvisApp(ctk.CTk):
             fg_color="#2f4ec6",
             hover_color="#3c64dd",
             command=dlg.destroy,
-        ).pack(pady=(0, 14))
+        ).pack(side="right", padx=(6, 20), pady=(0, 14))
+
+        ctk.CTkButton(
+            frame,
+            text="Menu principal",
+            width=170,
+            height=36,
+            corner_radius=18,
+            fg_color="#243f85",
+            hover_color="#3559b8",
+            command=lambda: self._return_from_dialog_to_main_menu(dlg),
+        ).pack(side="right", padx=(0, 6), pady=(0, 14))
+
+    def _return_from_dialog_to_main_menu(self, dialog: ctk.CTkToplevel):
+        try:
+            dialog.destroy()
+        except tk.TclError:
+            pass
+
+        if self._welcome_active:
+            self._set_welcome_menu_active("inicio")
+            return
+
+        self._return_to_main_menu()
+
+    def _open_settings_dialog(self):
+        settings = dict(self._settings)
+
+        dlg = ctk.CTkToplevel(self)
+        dlg.title(f"Configuracion de {ASSISTANT_NAME}")
+        dlg.geometry("700x560")
+        dlg.resizable(False, False)
+        dlg.grab_set()
+        dlg.configure(fg_color="#050f23")
+
+        shell = ctk.CTkFrame(dlg, fg_color="#0b1631", corner_radius=20, border_width=1, border_color="#2a4b88")
+        shell.pack(fill="both", expand=True, padx=14, pady=14)
+
+        ctk.CTkLabel(
+            shell,
+            text="CONFIGURACION",
+            font=ctk.CTkFont(size=14, weight="bold"),
+            text_color="#59b8ff",
+        ).pack(pady=(14, 0))
+
+        ctk.CTkLabel(
+            shell,
+            text=ASSISTANT_NAME,
+            font=ctk.CTkFont(size=34, weight="bold"),
+            text_color="#59f0c5",
+        ).pack(pady=(0, 6))
+
+        ctk.CTkLabel(
+            shell,
+            text="Ajusta voz, idioma y comportamiento de IA con persistencia local",
+            font=ctk.CTkFont(size=13),
+            text_color="#b7c9ee",
+        ).pack(pady=(0, 12))
+
+        body = ctk.CTkFrame(shell, fg_color="transparent")
+        body.pack(fill="both", expand=True, padx=16, pady=(2, 8))
+        body.grid_columnconfigure(0, weight=1)
+        body.grid_columnconfigure(1, weight=1)
+
+        voice_card = ctk.CTkFrame(body, fg_color="#10204a", corner_radius=14, border_width=1, border_color="#2c5ea5")
+        voice_card.grid(row=0, column=0, sticky="nsew", padx=(0, 8), pady=(0, 8))
+
+        ai_card = ctk.CTkFrame(body, fg_color="#10204a", corner_radius=14, border_width=1, border_color="#2c5ea5")
+        ai_card.grid(row=0, column=1, sticky="nsew", padx=(8, 0), pady=(0, 8))
+
+        system_card = ctk.CTkFrame(body, fg_color="#10204a", corner_radius=14, border_width=1, border_color="#2c5ea5")
+        system_card.grid(row=1, column=0, columnspan=2, sticky="nsew", pady=(4, 0))
+
+        ctk.CTkLabel(voice_card, text="VOZ", font=ctk.CTkFont(size=15, weight="bold"), text_color="#67e6ff").pack(anchor="w", padx=14, pady=(12, 8))
+
+        var_wake_default = tk.BooleanVar(value=bool(settings.get("wake_mode_default", False)))
+        wake_switch = ctk.CTkSwitch(
+            voice_card,
+            text="Iniciar con wake mode activado",
+            variable=var_wake_default,
+            onvalue=True,
+            offvalue=False,
+            progress_color="#2f52b0",
+        )
+        wake_switch.pack(anchor="w", padx=14, pady=(0, 8))
+
+        ctk.CTkLabel(voice_card, text="Wake words (separadas por coma)", text_color="#a9bde5").pack(anchor="w", padx=14)
+        wake_words_entry = ctk.CTkEntry(voice_card, height=34)
+        wake_words_entry.pack(fill="x", padx=14, pady=(4, 8))
+        wake_words_entry.insert(0, str(settings.get("wake_words", "jarvis,hey jarvis,ok jarvis")))
+
+        ctk.CTkLabel(voice_card, text="Voz TTS", text_color="#a9bde5").pack(anchor="w", padx=14)
+        tts_voice_menu = ctk.CTkOptionMenu(
+            voice_card,
+            values=["es-ES-AlvaroNeural", "es-ES-ElviraNeural", "en-US-GuyNeural", "en-GB-RyanNeural"],
+            fg_color="#243f85",
+            button_color="#3559b8",
+            button_hover_color="#4067ca",
+        )
+        tts_voice_menu.pack(fill="x", padx=14, pady=(4, 8))
+        tts_voice_menu.set(str(settings.get("tts_voice", "es-ES-AlvaroNeural")))
+
+        ctk.CTkLabel(voice_card, text="Velocidad de voz (ej: -10%, +0%, +15%)", text_color="#a9bde5").pack(anchor="w", padx=14)
+        tts_rate_entry = ctk.CTkEntry(voice_card, height=34)
+        tts_rate_entry.pack(fill="x", padx=14, pady=(4, 12))
+        tts_rate_entry.insert(0, str(settings.get("tts_rate", "+0%")))
+
+        ctk.CTkLabel(ai_card, text="IA", font=ctk.CTkFont(size=15, weight="bold"), text_color="#67e6ff").pack(anchor="w", padx=14, pady=(12, 8))
+
+        ctk.CTkLabel(ai_card, text="Idioma de reconocimiento", text_color="#a9bde5").pack(anchor="w", padx=14)
+        speech_lang_menu = ctk.CTkOptionMenu(
+            ai_card,
+            values=["es-ES", "en-US"],
+            fg_color="#243f85",
+            button_color="#3559b8",
+            button_hover_color="#4067ca",
+        )
+        speech_lang_menu.pack(fill="x", padx=14, pady=(4, 8))
+        speech_lang_menu.set(str(settings.get("speech_lang", "es-ES")))
+
+        ctk.CTkLabel(ai_card, text="Modelo Groq", text_color="#a9bde5").pack(anchor="w", padx=14)
+        groq_model_entry = ctk.CTkEntry(ai_card, height=34)
+        groq_model_entry.pack(fill="x", padx=14, pady=(4, 8))
+        groq_model_entry.insert(0, str(settings.get("groq_model", "llama-3.3-70b-versatile")))
+
+        ctk.CTkLabel(ai_card, text="Estilo de respuesta", text_color="#a9bde5").pack(anchor="w", padx=14)
+        style_menu = ctk.CTkOptionMenu(
+            ai_card,
+            values=["breve", "normal", "detallado"],
+            fg_color="#243f85",
+            button_color="#3559b8",
+            button_hover_color="#4067ca",
+        )
+        style_menu.pack(fill="x", padx=14, pady=(4, 12))
+        style_menu.set(str(settings.get("response_style", "normal")))
+
+        ctk.CTkLabel(system_card, text="SISTEMA", font=ctk.CTkFont(size=15, weight="bold"), text_color="#67e6ff").pack(anchor="w", padx=14, pady=(12, 6))
+        ctk.CTkLabel(
+            system_card,
+            text="Los ajustes se guardan en settings.json y se aplican sin romper tu interfaz actual.",
+            font=ctk.CTkFont(size=12),
+            text_color="#c0d1f0",
+            justify="left",
+        ).pack(anchor="w", padx=14, pady=(0, 4))
+
+        info_label = ctk.CTkLabel(system_card, text="", font=ctk.CTkFont(size=12, weight="bold"), text_color="#66f0bb")
+        info_label.pack(anchor="w", padx=14, pady=(0, 12))
+
+        footer = ctk.CTkFrame(shell, fg_color="transparent")
+        footer.pack(fill="x", padx=16, pady=(0, 14))
+
+        def _save_dialog_settings():
+            wake_words_value = wake_words_entry.get().strip()
+            tts_rate_value = tts_rate_entry.get().strip()
+            if not wake_words_value:
+                messagebox.showwarning("Configuracion", "Debes indicar al menos una wake word.")
+                return
+            if not tts_rate_value.endswith("%"):
+                messagebox.showwarning("Configuracion", "La velocidad de voz debe terminar en % (ej: +0%).")
+                return
+
+            payload = {
+                "wake_mode_default": bool(var_wake_default.get()),
+                "wake_words": wake_words_value,
+                "tts_voice": tts_voice_menu.get().strip(),
+                "tts_rate": tts_rate_value,
+                "speech_lang": speech_lang_menu.get().strip(),
+                "groq_model": groq_model_entry.get().strip() or "llama-3.3-70b-versatile",
+                "response_style": style_menu.get().strip(),
+            }
+            try:
+                self._settings = save_settings(payload)
+            except OSError as exc:
+                messagebox.showerror("Configuracion", f"No se pudo guardar: {exc}")
+                return
+
+            if not self._welcome_active and getattr(self, "main_frame", None):
+                self._set_wake_mode(bool(var_wake_default.get()), announce=False)
+            info_label.configure(text="Ajustes guardados correctamente.")
+            self._set_status("Configuracion actualizada") if getattr(self, "status_label", None) else None
+
+        ctk.CTkButton(
+            footer,
+            text="Cerrar",
+            width=120,
+            height=36,
+            fg_color="#2b3554",
+            hover_color="#3a496f",
+            command=dlg.destroy,
+        ).pack(side="right")
+
+        ctk.CTkButton(
+            footer,
+            text="Menu principal",
+            width=150,
+            height=36,
+            fg_color="#243f85",
+            hover_color="#3559b8",
+            command=lambda: self._return_from_dialog_to_main_menu(dlg),
+        ).pack(side="right", padx=(0, 10))
+
+        ctk.CTkButton(
+            footer,
+            text="Guardar cambios",
+            width=170,
+            height=36,
+            fg_color="#2f52b0",
+            hover_color="#416cd5",
+            command=_save_dialog_settings,
+        ).pack(side="right", padx=(0, 10))
 
     def _handle_welcome_action(self, action: str):
         self._set_welcome_menu_active(action)
 
         if action == "acerca":
             self._show_about_dialog()
+            return
+
+        if action == "configuracion":
+            self._open_settings_dialog()
             return
 
         if action == "inicio":
@@ -594,11 +810,6 @@ class JarvisApp(ctk.CTk):
             self._set_voice_return_enabled(True)
             self._toggle_voice()
             self._add_message(ASSISTANT_NAME, "Modo voz activo. Usa 'Menu principal' para volver.", is_bot=True)
-        elif action == "configuracion":
-            self._set_voice_return_enabled(False)
-            if not self._wake_mode:
-                self._toggle_wake_mode()
-            self._add_message(ASSISTANT_NAME, "Configuracion rapida: wake mode activado.", is_bot=True)
 
     def _start_jarvis(self):
         if not self._welcome_active:
@@ -628,6 +839,8 @@ class JarvisApp(ctk.CTk):
         self._hud_active = True
         self._animate_hud()
         self._add_message(ASSISTANT_NAME, f"Hola, soy {ASSISTANT_NAME}. ¿En qué puedo ayudarte?", is_bot=True)
+        if bool(self._settings.get("wake_mode_default", False)):
+            self.after(280, lambda: self._set_wake_mode(True, announce=False))
         self.after(220, self._run_pending_action)
 
     # ── Construcción de la UI ────────────────────────────────────────────────
@@ -994,18 +1207,35 @@ class JarvisApp(ctk.CTk):
     # ── Wake word / manos libres ─────────────────────────────────────────────
 
     def _toggle_wake_mode(self):
-        self._wake_mode = not self._wake_mode
+        self._set_wake_mode(not self._wake_mode, announce=True)
+
+    def _set_wake_mode(self, enabled: bool, announce: bool = True):
+        if enabled and self._wake_mode:
+            return
+        if not enabled and not self._wake_mode:
+            return
+
+        self._wake_mode = enabled
+        wake_btn = getattr(self, "wake_btn", None)
+        main_ui_ready = bool(getattr(self, "main_frame", None))
+        first_wake = (get_wake_words() or ["jarvis"])[0]
+
         if self._wake_mode:
-            self.wake_btn.configure(text="Wake ON", fg_color="#1a4a2d", hover_color="#2a6a3d")
-            self._set_status("Wake mode activo. Di: Jarvis")
-            self._set_hud_mode("wake")
-            self._add_message(ASSISTANT_NAME, "Modo manos libres activado. Di 'Jarvis' y luego tu orden.", is_bot=True)
+            if wake_btn:
+                wake_btn.configure(text="Wake ON", fg_color="#1a4a2d", hover_color="#2a6a3d")
+            if main_ui_ready:
+                self._set_status(f"Wake mode activo. Di: {first_wake}")
+                self._set_hud_mode("wake")
+                if announce:
+                    self._add_message(ASSISTANT_NAME, f"Modo manos libres activado. Di '{first_wake}' y luego tu orden.", is_bot=True)
             self._wake_thread = threading.Thread(target=self._wake_worker, daemon=True)
             self._wake_thread.start()
         else:
-            self.wake_btn.configure(text="Wake OFF", fg_color="#3a2d44", hover_color="#4d3a5c")
-            self._set_status("Wake mode desactivado")
-            self._set_hud_mode("idle")
+            if wake_btn:
+                wake_btn.configure(text="Wake OFF", fg_color="#3a2d44", hover_color="#4d3a5c")
+            if main_ui_ready:
+                self._set_status("Wake mode desactivado")
+                self._set_hud_mode("idle")
 
     def _wake_worker(self):
         while self._wake_mode:
@@ -1018,7 +1248,7 @@ class JarvisApp(ctk.CTk):
                 continue
 
             heard_lower = heard.lower()
-            if not any(w in heard_lower for w in WAKE_WORDS):
+            if not any(w in heard_lower for w in get_wake_words()):
                 continue
 
             self.after(0, lambda: self._set_status("Wake detectado. Te escucho..."))

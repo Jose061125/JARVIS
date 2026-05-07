@@ -5,6 +5,7 @@ dist/
 build/
 *.spec
 .env
+settings.json
 jarvis/__pycache__/
 pilot_architecture/node_modules/
 pilot_architecture/dist/

@@ -3,7 +3,7 @@ Módulo de reconocimiento de voz usando SpeechRecognition + Google STT (gratis).
 """
 
 import speech_recognition as sr
-from jarvis.config import SPEECH_LANG
+from jarvis.settings import get_setting
 
 
 _recognizer = sr.Recognizer()
@@ -24,7 +24,8 @@ def listen(timeout: int = 5, phrase_limit: int = 10) -> str | None:
             return None
 
     try:
-        text = _recognizer.recognize_google(audio, language=SPEECH_LANG)
+        speech_lang = str(get_setting("speech_lang") or "es-ES")
+        text = _recognizer.recognize_google(audio, language=speech_lang)
         return text.strip()
     except sr.UnknownValueError:
         return None
