@@ -333,7 +333,27 @@ def _youtube_music_autoplay_task() -> None:
         return
 
 
+def _canonical_windows_app_name(app_name: str) -> str:
+    aliases = {
+        "microsoft word": "word",
+        "ms word": "word",
+        "word": "word",
+        "microsoft excel": "excel",
+        "ms excel": "excel",
+        "excel": "excel",
+        "microsoft powerpoint": "powerpoint",
+        "power point": "powerpoint",
+        "powerpoint": "powerpoint",
+        "microsoft outlook": "outlook",
+        "outlook": "outlook",
+        "whatsapp": "whatsapp",
+        "whatsapp desktop": "whatsapp",
+    }
+    return aliases.get(app_name, app_name)
+
+
 def _windows_candidate_paths(app_name: str) -> list[str]:
+    app_name = _canonical_windows_app_name(app_name)
     local_app_data = os.environ.get("LOCALAPPDATA", "")
     program_files = os.environ.get("ProgramFiles", r"C:\Program Files")
     program_files_x86 = os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")
@@ -375,6 +395,7 @@ def _windows_candidate_paths(app_name: str) -> list[str]:
 
 
 def _open_windows_application(app_name: str, executable: str) -> bool:
+    app_name = _canonical_windows_app_name(app_name)
     protocol_map = {
         "edge": "microsoft-edge:",
         "microsoft edge": "microsoft-edge:",
@@ -411,7 +432,14 @@ def _open_windows_application(app_name: str, executable: str) -> bool:
                 pass
 
     try:
-        subprocess.Popen(["cmd", "/c", "start", "", executable], shell=True)
+        executable_name = executable[:-4] if executable.lower().endswith(".exe") else executable
+        subprocess.Popen(["cmd", "/c", "start", "", executable_name])
+        return True
+    except OSError:
+        pass
+
+    try:
+        subprocess.Popen(["powershell", "-NoProfile", "-Command", f"Start-Process '{executable}'"])
         return True
     except OSError:
         return False
@@ -420,6 +448,7 @@ def _open_windows_application(app_name: str, executable: str) -> bool:
 def open_application(app_name: str) -> str:
     """Intenta abrir una aplicación por nombre."""
     app_name = app_name.strip().lower()
+    canonical_app_name = _canonical_windows_app_name(app_name)
     system = platform.system()
 
     # Mapa de nombres comunes → ejecutables
@@ -445,9 +474,14 @@ def open_application(app_name: str) -> str:
         "skype": "skype.exe",
         # Ofimática
         "word": "winword.exe",
+        "microsoft word": "winword.exe",
         "excel": "excel.exe",
+        "microsoft excel": "excel.exe",
         "powerpoint": "powerpnt.exe",
+        "power point": "powerpnt.exe",
+        "microsoft powerpoint": "powerpnt.exe",
         "outlook": "outlook.exe",
+        "microsoft outlook": "outlook.exe",
         # Herramientas del sistema
         "notepad": "notepad.exe",
         "bloc de notas": "notepad.exe",
@@ -507,11 +541,11 @@ def open_application(app_name: str) -> str:
     if system == "Linux":
         executable = linux_map.get(app_name, app_name)
     else:
-        executable = app_map.get(app_name, app_name)
+        executable = app_map.get(canonical_app_name, app_map.get(app_name, app_name))
 
     try:
         if system == "Windows":
-            if not _open_windows_application(app_name, executable):
+            if not _open_windows_application(canonical_app_name, executable):
                 return f"No pude abrir {app_name} en Windows."
         elif system == "Darwin":  # macOS
             subprocess.Popen(["open", "-a", executable])
