@@ -45,5 +45,6 @@ Cuando el usuario pida apagar el PC, responde SOLO con: POWER:shutdown
 Cuando el usuario pida reiniciar el PC, responde SOLO con: POWER:restart
 Cuando el usuario pida suspender o modo reposo, responde SOLO con: POWER:sleep
 Cuando el usuario pida bloquear la pantalla, responde SOLO con: POWER:lock
+Cuando el usuario pida desbloquear la pantalla, responde SOLO con: POWER:unlock
 Cuando el usuario quiera cancelar el apagado, responde SOLO con: POWER:cancel_shutdown
 Para el resto de preguntas, responde de forma natural y concisa."""

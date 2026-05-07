@@ -5,7 +5,6 @@ Módulo de comandos del sistema: abrir apps, buscar en internet, controlar volum
 import subprocess
 import webbrowser
 import platform
-import sys
 import os
 
 
@@ -68,7 +67,16 @@ def open_application(app_name: str) -> str:
 
     try:
         if system == "Windows":
-            subprocess.Popen(executable, shell=True)
+            # En Windows, varios navegadores no siempre están en PATH.
+            # Usamos protocolos/START para que el sistema resuelva la app instalada.
+            if executable == "msedge.exe":
+                os.startfile("microsoft-edge:")
+            elif executable in ("chrome.exe", "firefox.exe", "brave.exe", "opera.exe"):
+                subprocess.Popen(["cmd", "/c", "start", "", executable], shell=True)
+            elif executable == "ms-settings:":
+                os.startfile("ms-settings:")
+            else:
+                subprocess.Popen(executable, shell=True)
         elif system == "Darwin":  # macOS
             subprocess.Popen(["open", "-a", executable])
         else:  # Linux
@@ -143,6 +151,11 @@ def system_power(action: str) -> str:
     elif action == "lock":
         subprocess.Popen("rundll32.exe user32.dll,LockWorkStation", shell=True)
         return "Bloqueando la pantalla..."
+    elif action == "unlock":
+        return (
+            "Windows no permite desbloquear automaticamente sin credenciales (PIN/huella/password). "
+            "Por seguridad, debes desbloquear manualmente."
+        )
     elif action == "cancel_shutdown":
         subprocess.Popen("shutdown /a", shell=True)
         return "Apagado/reinicio cancelado."
