@@ -26,7 +26,11 @@ def _credentials_path() -> Path | None:
         if p.exists():
             return p
 
-    for name in ("gmail_credentials.json", "credentials.json"):
+    for name in (
+        "gmail_credentials.json",
+        "gmail_crediantials.json",
+        "credentials.json",
+    ):
         p = _ROOT / name
         if p.exists():
             return p
