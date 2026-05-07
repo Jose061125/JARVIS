@@ -117,14 +117,14 @@ class JarvisApp(ctk.CTk):
         ).place(relx=0.5, rely=0.94, anchor="center")
 
         self.welcome_card = ctk.CTkFrame(self.welcome_frame, fg_color="#0a142a", corner_radius=22, border_width=1, border_color="#1c3e73")
-        self.welcome_card.place(relx=0.5, rely=0.5, relwidth=0.50, relheight=0.78, anchor="center")
+        self.welcome_card.place(relx=0.5, rely=0.5, relwidth=0.50, relheight=0.84, anchor="center")
 
         ctk.CTkLabel(
             self.welcome_card,
             text="ENTERPRISE AI CORE",
             font=ctk.CTkFont(size=12, weight="bold"),
             text_color="#4fb8ff",
-        ).place(relx=0.5, rely=0.10, anchor="center")
+        ).place(relx=0.5, rely=0.08, anchor="center")
 
         self.welcome_title_label = ctk.CTkLabel(
             self.welcome_card,
@@ -132,7 +132,7 @@ class JarvisApp(ctk.CTk):
             font=ctk.CTkFont(size=68, weight="bold"),
             text_color="#2ee6a6",
         )
-        self.welcome_title_label.place(relx=0.5, rely=0.23, anchor="center")
+        self.welcome_title_label.place(relx=0.5, rely=0.19, anchor="center")
 
         self.welcome_title_glow = ctk.CTkLabel(
             self.welcome_card,
@@ -140,7 +140,7 @@ class JarvisApp(ctk.CTk):
             font=ctk.CTkFont(size=68, weight="bold"),
             text_color="#4a4ad9",
         )
-        self.welcome_title_glow.place(relx=0.5, rely=0.233, anchor="center")
+        self.welcome_title_glow.place(relx=0.5, rely=0.193, anchor="center")
         self.welcome_title_glow.lower(self.welcome_title_label)
 
         ctk.CTkLabel(
@@ -148,10 +148,10 @@ class JarvisApp(ctk.CTk):
             text="Asistente inteligente para tu PC",
             font=ctk.CTkFont(size=24, weight="bold"),
             text_color="#90a3cf",
-        ).place(relx=0.5, rely=0.35, anchor="center")
+        ).place(relx=0.5, rely=0.29, anchor="center")
 
         subtitle_row = ctk.CTkFrame(self.welcome_card, fg_color="transparent")
-        subtitle_row.place(relx=0.5, rely=0.43, anchor="center")
+        subtitle_row.place(relx=0.5, rely=0.35, anchor="center")
 
         ctk.CTkLabel(
             subtitle_row,
@@ -167,18 +167,18 @@ class JarvisApp(ctk.CTk):
             text_color="#67e6ff",
         ).pack(side="left")
 
-        self.center_orb_canvas = tk.Canvas(self.welcome_card, width=360, height=270, bg="#0a142a", highlightthickness=0, bd=0)
-        self.center_orb_canvas.place(relx=0.5, rely=0.62, anchor="center")
+        self.center_orb_canvas = tk.Canvas(self.welcome_card, width=420, height=320, bg="#0a142a", highlightthickness=0, bd=0)
+        self.center_orb_canvas.place(relx=0.5, rely=0.58, anchor="center")
 
-        self.wave_canvas = tk.Canvas(self.welcome_card, width=360, height=100, bg="#0a142a", highlightthickness=0, bd=0)
-        self.wave_canvas.place(relx=0.5, rely=0.62, anchor="center")
+        self.wave_canvas = tk.Canvas(self.welcome_card, width=420, height=100, bg="#0a142a", highlightthickness=0, bd=0)
+        self.wave_canvas.place(relx=0.5, rely=0.68, anchor="center")
 
         ctk.CTkLabel(
             self.welcome_card,
             text="Presiona el microfono para hablar",
             font=ctk.CTkFont(size=14),
             text_color="#9ba8c7",
-        ).place(relx=0.5, rely=0.90, anchor="center")
+        ).place(relx=0.5, rely=0.93, anchor="center")
 
         self.start_btn = ctk.CTkButton(
             self.welcome_card,
@@ -191,7 +191,7 @@ class JarvisApp(ctk.CTk):
             font=ctk.CTkFont(size=24, weight="bold"),
             command=self._start_jarvis,
         )
-        self.start_btn.place(relx=0.5, rely=0.81, anchor="center")
+        self.start_btn.place(relx=0.5, rely=0.84, anchor="center")
 
         self.right_panel = ctk.CTkFrame(self.welcome_frame, fg_color="#06102a", corner_radius=18, border_width=1, border_color="#1a315a")
         self.right_panel.place(relx=0.89, rely=0.5, relwidth=0.20, relheight=0.92, anchor="center")
@@ -199,39 +199,56 @@ class JarvisApp(ctk.CTk):
         self.right_panel.bind("<Leave>", lambda _e: self._set_panel_hover(self.right_panel, False))
 
         info_cards = [
-            ("Estado del sistema", "Todos los sistemas funcionando"),
-            ("Capacidades activas", "Reconocimiento de voz  Navegacion web  IA"),
-            ("Acceso rapido", ""),
+            {
+                "title": "Estado del sistema",
+                "icon": "◉",
+                "status": "ONLINE",
+                "desc": "Todos los nucleos funcionando correctamente",
+                "metrics": ["CPU 98%", "RAM 64%", "VOICE ACTIVE"],
+            },
+            {
+                "title": "Capacidades activas",
+                "icon": "✦",
+                "status": "ACTIVE",
+                "desc": "Modulos inteligentes ejecutandose en tiempo real",
+                "metrics": ["NLP", "AUTOMATION", "WEB CONTROL"],
+            },
+            {
+                "title": "Acceso rapido",
+                "icon": "⬢",
+                "status": "READY",
+                "desc": "Herramientas inteligentes disponibles",
+                "metrics": ["SEARCH", "COMMANDS", "ANALYTICS"],
+            },
         ]
-        for idx, (title, desc) in enumerate(info_cards):
-            y = 0.17 + idx * 0.23
-            card = ctk.CTkFrame(self.right_panel, fg_color="#0c1a3d", corner_radius=18, border_width=1, border_color="#1e4a89")
-            card.place(relx=0.5, rely=y, relwidth=0.88, relheight=0.19, anchor="center")
-            badge = ctk.CTkFrame(card, width=34, height=34, fg_color="#1a3f78", corner_radius=17)
-            badge.place(relx=0.9, rely=0.28, anchor="center")
-            ctk.CTkLabel(badge, text="●", font=ctk.CTkFont(size=16, weight="bold"), text_color="#59f0c5").place(relx=0.5, rely=0.5, anchor="center")
-            ctk.CTkLabel(card, text=title, font=ctk.CTkFont(size=16, weight="bold"), text_color="#67e6ff").place(relx=0.06, rely=0.28, anchor="w")
 
-            if title != "Acceso rapido":
-                ctk.CTkLabel(card, text=desc, font=ctk.CTkFont(size=13), text_color="#c0cdef", wraplength=240, justify="left").place(relx=0.06, rely=0.66, anchor="w")
-            else:
-                quick_frame = ctk.CTkFrame(card, fg_color="transparent")
-                quick_frame.place(relx=0.06, rely=0.68, anchor="w")
+        for idx, card_data in enumerate(info_cards):
+            y = 0.16 + idx * 0.24
+            card = ctk.CTkFrame(self.right_panel, fg_color="#0c1a3d", corner_radius=22, border_width=1, border_color="#1e4a89")
+            card.place(relx=0.5, rely=y, relwidth=0.90, relheight=0.21, anchor="center")
 
-                quick_icons = [
-                    ("🔎", "#1e3f7a", "#67e6ff"),
-                    ("🤖", "#40206a", "#e07bff"),
-                    ("✦", "#1e3f7a", "#67e6ff"),
-                ]
-                x_cursor = 0
-                for icon, bg_color, icon_color in quick_icons:
-                    mini = ctk.CTkFrame(quick_frame, width=42, height=42, fg_color=bg_color, corner_radius=12, border_width=1, border_color="#2b5899")
-                    mini.place(x=x_cursor, y=0)
-                    ctk.CTkLabel(mini, text=icon, font=ctk.CTkFont(size=18, weight="bold"), text_color=icon_color).place(relx=0.5, rely=0.5, anchor="center")
-                    x_cursor += 52
+            icon_box = ctk.CTkFrame(card, width=46, height=46, fg_color="#153463", corner_radius=16, border_width=1, border_color="#2b67a9")
+            icon_box.place(relx=0.09, rely=0.22, anchor="center")
+            ctk.CTkLabel(icon_box, text=card_data["icon"], font=ctk.CTkFont(size=20, weight="bold"), text_color="#67e6ff").place(relx=0.5, rely=0.5, anchor="center")
+
+            ctk.CTkLabel(card, text=card_data["title"], font=ctk.CTkFont(size=15, weight="bold"), text_color="#67e6ff").place(relx=0.21, rely=0.20, anchor="w")
+
+            ctk.CTkLabel(card, text="●", font=ctk.CTkFont(size=12, weight="bold"), text_color="#59f0c5").place(relx=0.78, rely=0.21, anchor="center")
+            ctk.CTkLabel(card, text=card_data["status"], font=ctk.CTkFont(size=11, weight="bold"), text_color="#59f0c5").place(relx=0.84, rely=0.21, anchor="center")
+
+            ctk.CTkLabel(card, text=card_data["desc"], font=ctk.CTkFont(size=12), text_color="#c0cdef", wraplength=245, justify="left").place(relx=0.06, rely=0.52, anchor="w")
+
+            chip_holder = ctk.CTkFrame(card, fg_color="transparent")
+            chip_holder.place(relx=0.06, rely=0.82, anchor="w")
+            chip_x = 0
+            for metric in card_data["metrics"]:
+                chip = ctk.CTkFrame(chip_holder, width=max(56, 10 + len(metric) * 7), height=24, fg_color="#13366a", corner_radius=10, border_width=1, border_color="#2a5a9c")
+                chip.place(x=chip_x, y=0)
+                ctk.CTkLabel(chip, text=metric, font=ctk.CTkFont(size=10), text_color="#70e7ff").place(relx=0.5, rely=0.5, anchor="center")
+                chip_x += max(64, 18 + len(metric) * 7)
 
         quote = ctk.CTkFrame(self.right_panel, fg_color="#10204c", corner_radius=16, border_width=1, border_color="#2a5dab")
-        quote.place(relx=0.5, rely=0.88, relwidth=0.88, relheight=0.16, anchor="center")
+        quote.place(relx=0.5, rely=0.90, relwidth=0.90, relheight=0.14, anchor="center")
         ctk.CTkLabel(
             quote,
             text="Escucha. Entiende. Conecta.",
@@ -358,12 +375,12 @@ class JarvisApp(ctk.CTk):
         c = self.center_orb_canvas
         c.delete("all")
         phase = self._welcome_phase
-        w = int(c.winfo_width() or 360)
-        h = int(c.winfo_height() or 270)
+        w = int(c.winfo_width() or 420)
+        h = int(c.winfo_height() or 320)
         cx, cy = w // 2, h // 2
 
-        core_r = int(66 + 6 * math.sin(phase * 2.1))
-        outer_r = int(118 + 8 * math.sin(phase * 1.4))
+        core_r = int(72 + 6 * math.sin(phase * 2.1))
+        outer_r = int(146 + 10 * math.sin(phase * 1.4))
 
         # Halo suave multicapa
         for i in range(5):
@@ -374,6 +391,12 @@ class JarvisApp(ctk.CTk):
         # Glow exterior
         c.create_oval(cx - (outer_r + 18), cy - (outer_r + 18), cx + (outer_r + 18), cy + (outer_r + 18), outline="#112b52", width=2)
         c.create_oval(cx - outer_r, cy - outer_r, cx + outer_r, cy + outer_r, outline="#35dbff", width=2)
+
+        # Dos anillos grandes contra-rotando (estilo framer)
+        c.create_arc(cx - int(outer_r * 1.04), cy - int(outer_r * 1.04), cx + int(outer_r * 1.04), cy + int(outer_r * 1.04),
+                 start=(phase * 35) % 360, extent=250, style=tk.ARC, outline="#5de6ff", width=3)
+        c.create_arc(cx - int(outer_r * 0.86), cy - int(outer_r * 0.86), cx + int(outer_r * 0.86), cy + int(outer_r * 0.86),
+                 start=(phase * -52) % 360, extent=210, style=tk.ARC, outline="#cf63ff", width=3)
 
         # Arcos rotatorios
         c.create_arc(cx - (outer_r + 6), cy - (outer_r + 6), cx + (outer_r + 6), cy + (outer_r + 6),
@@ -406,6 +429,15 @@ class JarvisApp(ctk.CTk):
             py = cy + int(math.sin(a) * pr)
             col = "#5be9ff" if i % 2 == 0 else "#c56bff"
             c.create_oval(px - 2, py - 2, px + 2, py + 2, outline=col, fill=col)
+
+        # Particulas internas flotantes
+        for i in range(20):
+            a = (i * 0.9) + phase * (1.0 + i * 0.02)
+            pr = int(core_r * 1.15 * (0.35 + 0.65 * ((i % 5) / 4)))
+            px = cx + int(math.cos(a) * pr)
+            py = cy + int(math.sin(a * 1.2) * pr * 0.75)
+            col = "#8cf1ff" if i % 2 == 0 else "#f39bff"
+            c.create_oval(px - 1, py - 1, px + 1, py + 1, outline=col, fill=col)
 
         # Núcleo
         c.create_oval(cx - int(core_r * 1.45), cy - int(core_r * 1.45), cx + int(core_r * 1.45), cy + int(core_r * 1.45), outline="#1f4b7f", width=2)
