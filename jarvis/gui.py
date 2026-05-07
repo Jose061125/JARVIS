@@ -167,15 +167,18 @@ class JarvisApp(ctk.CTk):
             text_color="#67e6ff",
         ).pack(side="left")
 
-        self.wave_canvas = tk.Canvas(self.welcome_card, width=320, height=84, bg="#0a142a", highlightthickness=0, bd=0)
-        self.wave_canvas.place(relx=0.5, rely=0.57, anchor="center")
+        self.center_orb_canvas = tk.Canvas(self.welcome_card, width=360, height=270, bg="#0a142a", highlightthickness=0, bd=0)
+        self.center_orb_canvas.place(relx=0.5, rely=0.62, anchor="center")
+
+        self.wave_canvas = tk.Canvas(self.welcome_card, width=360, height=100, bg="#0a142a", highlightthickness=0, bd=0)
+        self.wave_canvas.place(relx=0.5, rely=0.62, anchor="center")
 
         ctk.CTkLabel(
             self.welcome_card,
             text="Presiona el microfono para hablar",
             font=ctk.CTkFont(size=14),
             text_color="#9ba8c7",
-        ).place(relx=0.5, rely=0.86, anchor="center")
+        ).place(relx=0.5, rely=0.90, anchor="center")
 
         self.start_btn = ctk.CTkButton(
             self.welcome_card,
@@ -188,7 +191,7 @@ class JarvisApp(ctk.CTk):
             font=ctk.CTkFont(size=24, weight="bold"),
             command=self._start_jarvis,
         )
-        self.start_btn.place(relx=0.5, rely=0.75, anchor="center")
+        self.start_btn.place(relx=0.5, rely=0.81, anchor="center")
 
         self.right_panel = ctk.CTkFrame(self.welcome_frame, fg_color="#06102a", corner_radius=18, border_width=1, border_color="#1a315a")
         self.right_panel.place(relx=0.89, rely=0.5, relwidth=0.20, relheight=0.92, anchor="center")
@@ -337,9 +340,9 @@ class JarvisApp(ctk.CTk):
         c.delete("all")
         phase = self._welcome_phase
         bars = 17
-        center_x = 160
-        base_y = 70
-        gap = 16
+        center_x = 180
+        base_y = 58
+        gap = 18
 
         for i in range(bars):
             rel = i - (bars // 2)
@@ -349,12 +352,44 @@ class JarvisApp(ctk.CTk):
             color = "#d24dff" if i % 2 == 0 else "#3ae4ff"
             c.create_line(x, base_y, x, base_y - h, fill=color, width=6)
 
+    def _draw_center_orb(self):
+        if not getattr(self, "center_orb_canvas", None):
+            return
+        c = self.center_orb_canvas
+        c.delete("all")
+        phase = self._welcome_phase
+        w = int(c.winfo_width() or 360)
+        h = int(c.winfo_height() or 270)
+        cx, cy = w // 2, h // 2
+
+        core_r = int(66 + 6 * math.sin(phase * 2.1))
+        outer_r = int(118 + 8 * math.sin(phase * 1.4))
+
+        # Glow exterior
+        c.create_oval(cx - (outer_r + 18), cy - (outer_r + 18), cx + (outer_r + 18), cy + (outer_r + 18), outline="#112b52", width=2)
+        c.create_oval(cx - outer_r, cy - outer_r, cx + outer_r, cy + outer_r, outline="#35dbff", width=2)
+
+        # Arcos rotatorios
+        c.create_arc(cx - (outer_r + 6), cy - (outer_r + 6), cx + (outer_r + 6), cy + (outer_r + 6),
+                     start=(phase * 50) % 360, extent=220, style=tk.ARC, outline="#b053ff", width=3)
+        c.create_arc(cx - (outer_r - 16), cy - (outer_r - 16), cx + (outer_r - 16), cy + (outer_r - 16),
+                     start=(phase * -70) % 360, extent=170, style=tk.ARC, outline="#44e7ff", width=3)
+
+        # Núcleo
+        c.create_oval(cx - int(core_r * 1.45), cy - int(core_r * 1.45), cx + int(core_r * 1.45), cy + int(core_r * 1.45), outline="#1f4b7f", width=2)
+        c.create_oval(cx - core_r, cy - core_r, cx + core_r, cy + core_r, outline="#56e6ff", width=3)
+        c.create_oval(cx - int(core_r * 0.72), cy - int(core_r * 0.72), cx + int(core_r * 0.72), cy + int(core_r * 0.72), fill="#1a2b5a", outline="#7e5dff", width=2)
+
+        # Letra central
+        c.create_text(cx, cy, text=ASSISTANT_NAME[:1].upper(), fill="#7fe7ff", font=("Segoe UI", 52, "bold"))
+
     def _animate_welcome(self):
         if not self._welcome_active:
             return
         self._welcome_phase += 0.08
         self._draw_welcome_background()
         self._draw_logo_orb()
+        self._draw_center_orb()
         self._draw_welcome_wave()
 
         # Pulso neon para el titulo principal
