@@ -36,53 +36,118 @@ class JarvisApp(ctk.CTk):
         self._tts_thread: threading.Thread | None = None
         self._hud_mode = "idle"
         self._hud_phase = 0.0
+        self._welcome_phase = 0.0
+        self._welcome_active = True
 
         self.protocol("WM_DELETE_WINDOW", self._on_close)
         self._build_welcome_screen()
 
     def _build_welcome_screen(self):
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_columnconfigure(0, weight=1)
+
         self.welcome_frame = ctk.CTkFrame(self, corner_radius=0, fg_color="#050912")
         self.welcome_frame.grid(row=0, column=0, sticky="nsew")
         self.welcome_frame.grid_columnconfigure(0, weight=1)
         self.welcome_frame.grid_rowconfigure(0, weight=1)
 
-        card = ctk.CTkFrame(self.welcome_frame, width=680, height=360, fg_color="#0b1224", corner_radius=18)
-        card.grid(row=0, column=0)
-        card.grid_propagate(False)
+        self.welcome_canvas = tk.Canvas(
+            self.welcome_frame,
+            bg="#040914",
+            highlightthickness=0,
+            bd=0,
+        )
+        self.welcome_canvas.grid(row=0, column=0, sticky="nsew")
+        self.welcome_canvas.bind("<Configure>", lambda _e: self._draw_welcome_background())
+
+        card = ctk.CTkFrame(self.welcome_frame, fg_color="#0a142a", corner_radius=22, border_width=1, border_color="#1c3e73")
+        card.place(relx=0.5, rely=0.5, relwidth=0.58, relheight=0.66, anchor="center")
+
+        ctk.CTkLabel(
+            card,
+            text="ENTERPRISE AI CORE",
+            font=ctk.CTkFont(size=12, weight="bold"),
+            text_color="#4fb8ff",
+        ).place(relx=0.5, rely=0.12, anchor="center")
 
         ctk.CTkLabel(
             card,
             text=f"{ASSISTANT_NAME}",
-            font=ctk.CTkFont(size=56, weight="bold"),
+            font=ctk.CTkFont(size=62, weight="bold"),
             text_color="#2ee6a6",
-        ).place(relx=0.5, rely=0.28, anchor="center")
+        ).place(relx=0.5, rely=0.32, anchor="center")
 
         ctk.CTkLabel(
             card,
             text="Asistente inteligente para tu PC",
-            font=ctk.CTkFont(size=18),
+            font=ctk.CTkFont(size=20),
             text_color="#90a3cf",
-        ).place(relx=0.5, rely=0.45, anchor="center")
+        ).place(relx=0.5, rely=0.5, anchor="center")
 
         ctk.CTkLabel(
             card,
             text="Voz, comandos del sistema y navegador en tiempo real",
             font=ctk.CTkFont(size=14),
             text_color="#6e81ad",
-        ).place(relx=0.5, rely=0.54, anchor="center")
+        ).place(relx=0.5, rely=0.58, anchor="center")
 
         ctk.CTkButton(
             card,
             text="Iniciar JARVIS",
-            width=200,
-            height=46,
+            width=230,
+            height=50,
             corner_radius=24,
             fg_color="#1c8cff",
             hover_color="#36a0ff",
             command=self._start_jarvis,
-        ).place(relx=0.5, rely=0.74, anchor="center")
+        ).place(relx=0.5, rely=0.78, anchor="center")
+
+        self._animate_welcome()
+
+    def _draw_welcome_background(self):
+        if not getattr(self, "welcome_canvas", None):
+            return
+
+        canvas = self.welcome_canvas
+        canvas.delete("all")
+        w = max(700, canvas.winfo_width())
+        h = max(500, canvas.winfo_height())
+        phase = self._welcome_phase
+
+        # Rejilla de fondo
+        for x in range(0, w, 56):
+            canvas.create_line(x, 0, x, h, fill="#081531", width=1)
+        for y in range(0, h, 56):
+            canvas.create_line(0, y, w, y, fill="#081531", width=1)
+
+        # Dos núcleos brillantes laterales
+        left_x, right_x, cy = int(w * 0.2), int(w * 0.8), int(h * 0.52)
+        pulse_a = 1.0 + 0.08 * math.sin(phase * 1.8)
+        pulse_b = 1.0 + 0.08 * math.cos(phase * 1.6)
+
+        self._draw_welcome_core(canvas, left_x, cy, int(130 * pulse_a), "#1ed7ff")
+        self._draw_welcome_core(canvas, right_x, cy, int(130 * pulse_b), "#2ee6a6")
+
+        # Barras decorativas superiores
+        for i in range(7):
+            bar_h = 18 + int(26 * (0.5 + 0.5 * math.sin(phase * 2.1 + i)))
+            x0 = int(w * 0.88) + i * 10
+            canvas.create_rectangle(x0, int(h * 0.12) - bar_h, x0 + 6, int(h * 0.12), fill="#18cfff", outline="")
+
+    def _draw_welcome_core(self, canvas: tk.Canvas, x: int, y: int, r: int, color: str):
+        canvas.create_oval(x - r, y - r, x + r, y + r, outline="#103455", width=2)
+        canvas.create_oval(x - int(r * 0.72), y - int(r * 0.72), x + int(r * 0.72), y + int(r * 0.72), outline=color, width=2)
+        canvas.create_oval(x - int(r * 0.44), y - int(r * 0.44), x + int(r * 0.44), y + int(r * 0.44), outline="#2a5d8b", width=2)
+
+    def _animate_welcome(self):
+        if not self._welcome_active:
+            return
+        self._welcome_phase += 0.08
+        self._draw_welcome_background()
+        self.after(45, self._animate_welcome)
 
     def _start_jarvis(self):
+        self._welcome_active = False
         self.welcome_frame.destroy()
         self._build_ui()
         self._animate_hud()
