@@ -61,8 +61,8 @@ class JarvisApp(ctk.CTk):
         self.welcome_canvas.grid(row=0, column=0, sticky="nsew")
         self.welcome_canvas.bind("<Configure>", lambda _e: self._draw_welcome_background())
 
-        self.left_panel = ctk.CTkFrame(self.welcome_frame, fg_color="#071333", corner_radius=24, border_width=1, border_color="#2a4f90")
-        self.left_panel.place(relx=0.12, rely=0.5, relwidth=0.18, relheight=0.90, anchor="center")
+        self.left_panel = ctk.CTkFrame(self.welcome_frame, fg_color="#06102a", corner_radius=24, border_width=1, border_color="#22457f")
+        self.left_panel.place(relx=0.11, rely=0.5, relwidth=0.19, relheight=0.92, anchor="center")
         self.left_panel.bind("<Enter>", lambda _e: self._set_panel_hover(self.left_panel, True))
         self.left_panel.bind("<Leave>", lambda _e: self._set_panel_hover(self.left_panel, False))
 
@@ -79,44 +79,45 @@ class JarvisApp(ctk.CTk):
         menu_items = [
             ("⌂", "Inicio"),
             ("◉", "Voz"),
+            ("⊞", "Comandos"),
             ("◎", "Navegador"),
             ("⚙", "Configuracion"),
             ("i", "Acerca de"),
         ]
         for idx, (icon, item) in enumerate(menu_items):
-            y = 0.33 + idx * 0.095
+            y = 0.30 + idx * 0.087
             active = idx == 0
             ctk.CTkButton(
                 self.left_panel,
                 text=f"{icon}   {item}",
-                width=156,
-                height=38,
+                width=168,
+                height=40,
                 corner_radius=19,
-                fg_color="#3553c9" if active else "#122856",
-                hover_color="#3d64df" if active else "#1b3771",
+                fg_color="#2f4ec6" if active else "#0f214a",
+                hover_color="#3c64dd" if active else "#193466",
                 text_color="#eef4ff" if active else "#abc1ee",
                 font=ctk.CTkFont(size=14, weight="bold" if active else "normal"),
                 command=lambda: None,
             ).place(relx=0.5, rely=y, anchor="center")
 
-        ctk.CTkFrame(self.left_panel, width=158, height=1, fg_color="#254b86").place(relx=0.5, rely=0.84, anchor="center")
+        ctk.CTkFrame(self.left_panel, width=168, height=1, fg_color="#254b86").place(relx=0.5, rely=0.85, anchor="center")
 
         ctk.CTkLabel(
             self.left_panel,
             text="SISTEMA ACTIVO",
             font=ctk.CTkFont(size=12, weight="bold"),
             text_color="#4ee39a",
-        ).place(relx=0.5, rely=0.91, anchor="center")
+        ).place(relx=0.5, rely=0.90, anchor="center")
 
         ctk.CTkLabel(
             self.left_panel,
             text="● Conectado",
             font=ctk.CTkFont(size=11),
             text_color="#73f0ba",
-        ).place(relx=0.5, rely=0.95, anchor="center")
+        ).place(relx=0.5, rely=0.94, anchor="center")
 
         self.welcome_card = ctk.CTkFrame(self.welcome_frame, fg_color="#0a142a", corner_radius=22, border_width=1, border_color="#1c3e73")
-        self.welcome_card.place(relx=0.5, rely=0.5, relwidth=0.5, relheight=0.66, anchor="center")
+        self.welcome_card.place(relx=0.5, rely=0.5, relwidth=0.50, relheight=0.78, anchor="center")
 
         ctk.CTkLabel(
             self.welcome_card,
@@ -128,76 +129,76 @@ class JarvisApp(ctk.CTk):
         self.welcome_title_label = ctk.CTkLabel(
             self.welcome_card,
             text=f"{ASSISTANT_NAME}",
-            font=ctk.CTkFont(size=62, weight="bold"),
+            font=ctk.CTkFont(size=68, weight="bold"),
             text_color="#2ee6a6",
         )
-        self.welcome_title_label.place(relx=0.5, rely=0.32, anchor="center")
+        self.welcome_title_label.place(relx=0.5, rely=0.26, anchor="center")
 
         ctk.CTkLabel(
             self.welcome_card,
             text="Asistente inteligente para tu PC",
-            font=ctk.CTkFont(size=20),
+            font=ctk.CTkFont(size=22),
             text_color="#90a3cf",
-        ).place(relx=0.5, rely=0.5, anchor="center")
+        ).place(relx=0.5, rely=0.38, anchor="center")
 
         ctk.CTkLabel(
             self.welcome_card,
             text="Voz, comandos del sistema y navegador en tiempo real",
+            font=ctk.CTkFont(size=16),
+            text_color="#67e6ff",
+        ).place(relx=0.5, rely=0.45, anchor="center")
+
+        ctk.CTkLabel(
+            self.welcome_card,
+            text="Presiona el microfono para hablar",
             font=ctk.CTkFont(size=14),
-            text_color="#6e81ad",
-        ).place(relx=0.5, rely=0.58, anchor="center")
+            text_color="#9ba8c7",
+        ).place(relx=0.5, rely=0.86, anchor="center")
 
         self.start_btn = ctk.CTkButton(
             self.welcome_card,
-            text="Iniciar ECHONEX",
-            width=230,
-            height=50,
-            corner_radius=24,
-            fg_color="#1c8cff",
-            hover_color="#36a0ff",
+            text=f"Iniciar {ASSISTANT_NAME}",
+            width=280,
+            height=56,
+            corner_radius=28,
+            fg_color="#7a2dff",
+            hover_color="#1ca4ff",
+            font=ctk.CTkFont(size=24, weight="bold"),
             command=self._start_jarvis,
         )
-        self.start_btn.place(relx=0.5, rely=0.78, anchor="center")
+        self.start_btn.place(relx=0.5, rely=0.76, anchor="center")
 
         self.right_panel = ctk.CTkFrame(self.welcome_frame, fg_color="#06102a", corner_radius=18, border_width=1, border_color="#1a315a")
-        self.right_panel.place(relx=0.88, rely=0.5, relwidth=0.16, relheight=0.88, anchor="center")
+        self.right_panel.place(relx=0.89, rely=0.5, relwidth=0.20, relheight=0.92, anchor="center")
         self.right_panel.bind("<Enter>", lambda _e: self._set_panel_hover(self.right_panel, True))
         self.right_panel.bind("<Leave>", lambda _e: self._set_panel_hover(self.right_panel, False))
 
+        info_cards = [
+            ("Estado del sistema", "Todos los sistemas funcionando"),
+            ("Capacidades activas", "Reconocimiento de voz  Navegacion web  IA"),
+            ("Acceso rapido", "Explorar  Buscar  Automatizar"),
+        ]
+        for idx, (title, desc) in enumerate(info_cards):
+            y = 0.18 + idx * 0.24
+            card = ctk.CTkFrame(self.right_panel, fg_color="#0c1a3d", corner_radius=18, border_width=1, border_color="#1e4a89")
+            card.place(relx=0.5, rely=y, relwidth=0.88, relheight=0.20, anchor="center")
+            ctk.CTkLabel(card, text=title, font=ctk.CTkFont(size=18, weight="bold"), text_color="#67e6ff").place(relx=0.06, rely=0.28, anchor="w")
+            ctk.CTkLabel(card, text=desc, font=ctk.CTkFont(size=13), text_color="#c0cdef", wraplength=240, justify="left").place(relx=0.06, rely=0.66, anchor="w")
+
+        quote = ctk.CTkFrame(self.right_panel, fg_color="#10204c", corner_radius=16, border_width=1, border_color="#2a5dab")
+        quote.place(relx=0.5, rely=0.88, relwidth=0.88, relheight=0.16, anchor="center")
         ctk.CTkLabel(
-            self.right_panel,
-            text="ESTADO DEL SISTEMA",
+            quote,
+            text="Escucha. Entiende. Conecta.",
+            font=ctk.CTkFont(size=14, slant="italic"),
+            text_color="#d4def7",
+        ).place(relx=0.5, rely=0.35, anchor="center")
+        ctk.CTkLabel(
+            quote,
+            text=f"- {ASSISTANT_NAME}",
             font=ctk.CTkFont(size=13, weight="bold"),
-            text_color="#a5b8e9",
-        ).place(relx=0.5, rely=0.08, anchor="center")
-
-        ctk.CTkLabel(
-            self.right_panel,
-            text="Optimo",
-            font=ctk.CTkFont(size=18, weight="bold"),
-            text_color="#2ee6a6",
-        ).place(relx=0.5, rely=0.16, anchor="center")
-
-        ctk.CTkLabel(
-            self.right_panel,
-            text="ACERCA DE",
-            font=ctk.CTkFont(size=13, weight="bold"),
-            text_color="#a5b8e9",
-        ).place(relx=0.5, rely=0.36, anchor="center")
-
-        about_text = (
-            f"{ASSISTANT_NAME} escucha tu voz,\n"
-            "ejecuta comandos del sistema,\n"
-            "abre apps y sitios web,\n"
-            "y responde con IA en tiempo real."
-        )
-        ctk.CTkLabel(
-            self.right_panel,
-            text=about_text,
-            font=ctk.CTkFont(size=12),
-            justify="left",
-            text_color="#8ea4d3",
-        ).place(relx=0.5, rely=0.56, anchor="center")
+            text_color="#6ce7ff",
+        ).place(relx=0.88, rely=0.74, anchor="e")
 
         self._animate_welcome()
 
