@@ -157,6 +157,13 @@ class JarvisApp(ctk.CTk):
             text_color="#67e6ff",
         ).place(relx=0.5, rely=0.45, anchor="center")
 
+        ctk.CTkLabel(
+            self.welcome_card,
+            text="✦",
+            font=ctk.CTkFont(size=20, weight="bold"),
+            text_color="#d24dff",
+        ).place(relx=0.23, rely=0.45, anchor="center")
+
         self.wave_canvas = tk.Canvas(self.welcome_card, width=320, height=84, bg="#0a142a", highlightthickness=0, bd=0)
         self.wave_canvas.place(relx=0.5, rely=0.58, anchor="center")
 
@@ -169,7 +176,7 @@ class JarvisApp(ctk.CTk):
 
         self.start_btn = ctk.CTkButton(
             self.welcome_card,
-            text=f"Iniciar {ASSISTANT_NAME}",
+            text=f"🤖  Iniciar {ASSISTANT_NAME}",
             width=280,
             height=56,
             corner_radius=28,
@@ -188,7 +195,7 @@ class JarvisApp(ctk.CTk):
         info_cards = [
             ("Estado del sistema", "Todos los sistemas funcionando"),
             ("Capacidades activas", "Reconocimiento de voz  Navegacion web  IA"),
-            ("Acceso rapido", "Explorar  Buscar  Automatizar"),
+            ("Acceso rapido", ""),
         ]
         for idx, (title, desc) in enumerate(info_cards):
             y = 0.18 + idx * 0.24
@@ -198,7 +205,24 @@ class JarvisApp(ctk.CTk):
             badge.place(relx=0.9, rely=0.28, anchor="center")
             ctk.CTkLabel(badge, text="●", font=ctk.CTkFont(size=16, weight="bold"), text_color="#59f0c5").place(relx=0.5, rely=0.5, anchor="center")
             ctk.CTkLabel(card, text=title, font=ctk.CTkFont(size=18, weight="bold"), text_color="#67e6ff").place(relx=0.06, rely=0.28, anchor="w")
-            ctk.CTkLabel(card, text=desc, font=ctk.CTkFont(size=13), text_color="#c0cdef", wraplength=240, justify="left").place(relx=0.06, rely=0.66, anchor="w")
+
+            if title != "Acceso rapido":
+                ctk.CTkLabel(card, text=desc, font=ctk.CTkFont(size=13), text_color="#c0cdef", wraplength=240, justify="left").place(relx=0.06, rely=0.66, anchor="w")
+            else:
+                quick_frame = ctk.CTkFrame(card, fg_color="transparent")
+                quick_frame.place(relx=0.06, rely=0.68, anchor="w")
+
+                quick_icons = [
+                    ("🔎", "#1e3f7a", "#67e6ff"),
+                    ("🤖", "#40206a", "#e07bff"),
+                    ("✦", "#1e3f7a", "#67e6ff"),
+                ]
+                x_cursor = 0
+                for icon, bg_color, icon_color in quick_icons:
+                    mini = ctk.CTkFrame(quick_frame, width=42, height=42, fg_color=bg_color, corner_radius=12, border_width=1, border_color="#2b5899")
+                    mini.place(x=x_cursor, y=0)
+                    ctk.CTkLabel(mini, text=icon, font=ctk.CTkFont(size=18, weight="bold"), text_color=icon_color).place(relx=0.5, rely=0.5, anchor="center")
+                    x_cursor += 52
 
         quote = ctk.CTkFrame(self.right_panel, fg_color="#10204c", corner_radius=16, border_width=1, border_color="#2a5dab")
         quote.place(relx=0.5, rely=0.88, relwidth=0.88, relheight=0.16, anchor="center")
