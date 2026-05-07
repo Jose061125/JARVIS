@@ -31,6 +31,10 @@ ASSISTANT_NAME = "JARVIS"
 # Idioma para reconocimiento de voz ("es-ES" o "en-US")
 SPEECH_LANG = "es-ES"
 
+# Palabras de activación para modo manos libres
+WAKE_WORDS_RAW = os.environ.get("WAKE_WORDS", "jarvis,hey jarvis,ok jarvis")
+WAKE_WORDS = [w.strip().lower() for w in WAKE_WORDS_RAW.split(",") if w.strip()]
+
 # Personalidad del asistente (system prompt)
 SYSTEM_PROMPT = f"""Eres {ASSISTANT_NAME}, un asistente de IA personal para el PC del usuario.
 Eres inteligente, conciso y útil. Respondes en el mismo idioma que el usuario.

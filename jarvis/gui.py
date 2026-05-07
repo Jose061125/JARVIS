@@ -5,12 +5,13 @@ Interfaz gráfica principal de JARVIS usando customtkinter.
 import threading
 import customtkinter as ctk
 from datetime import datetime
+import time
 
 from jarvis.brain import chat, clear_history
 from jarvis.tts import speak_async
 from jarvis.stt import listen
 from jarvis.commands import handle_command
-from jarvis.config import ASSISTANT_NAME
+from jarvis.config import ASSISTANT_NAME, WAKE_WORDS
 
 # ── Tema ────────────────────────────────────────────────────────────────────
 ctk.set_appearance_mode("dark")
@@ -26,8 +27,12 @@ class JarvisApp(ctk.CTk):
         self.minsize(500, 450)
 
         self._is_listening = False
+        self._is_processing = False
+        self._wake_mode = False
+        self._wake_thread: threading.Thread | None = None
         self._tts_thread: threading.Thread | None = None
 
+        self.protocol("WM_DELETE_WINDOW", self._on_close)
         self._build_ui()
         self._add_message("JARVIS", f"Hola, soy {ASSISTANT_NAME}. ¿En qué puedo ayudarte?", is_bot=True)
 
@@ -64,6 +69,17 @@ class JarvisApp(ctk.CTk):
             fg_color="#2d2d44",
             hover_color="#3d3d5c",
         ).pack(side="right", padx=10)
+
+        self.wake_btn = ctk.CTkButton(
+            header,
+            text="Wake OFF",
+            width=100,
+            height=30,
+            command=self._toggle_wake_mode,
+            fg_color="#3a2d44",
+            hover_color="#4d3a5c",
+        )
+        self.wake_btn.pack(side="right", padx=(0, 8))
 
         # ── Área de chat ──
         self.chat_box = ctk.CTkScrollableFrame(main, corner_radius=10, fg_color="#0d0d1a")
@@ -164,6 +180,9 @@ class JarvisApp(ctk.CTk):
     def _toggle_voice(self):
         if self._is_listening:
             return
+        if self._is_processing:
+            self._set_status("Espera a que termine la respuesta actual...")
+            return
         self._is_listening = True
         self.voice_btn.configure(text="⏹", fg_color="#4a1a1a")
         self._set_status("Escuchando...")
@@ -181,6 +200,9 @@ class JarvisApp(ctk.CTk):
     # ── Procesar input (texto o voz) ─────────────────────────────────────────
 
     def _process_input(self, user_text: str):
+        if self._is_processing:
+            return
+        self._is_processing = True
         self._add_message("Tú", user_text, is_bot=False)
         self._set_status("Pensando...")
         self.send_btn.configure(state="disabled")
@@ -204,7 +226,47 @@ class JarvisApp(ctk.CTk):
             self.after(0, lambda: self._add_message(ASSISTANT_NAME, error_msg, is_bot=True))
             self.after(0, lambda: self._set_status("Error"))
         finally:
+            self._is_processing = False
             self.after(0, lambda: self.send_btn.configure(state="normal"))
+
+    # ── Wake word / manos libres ─────────────────────────────────────────────
+
+    def _toggle_wake_mode(self):
+        self._wake_mode = not self._wake_mode
+        if self._wake_mode:
+            self.wake_btn.configure(text="Wake ON", fg_color="#1a4a2d", hover_color="#2a6a3d")
+            self._set_status("Wake mode activo. Di: Jarvis")
+            self._add_message(ASSISTANT_NAME, "Modo manos libres activado. Di 'Jarvis' y luego tu orden.", is_bot=True)
+            self._wake_thread = threading.Thread(target=self._wake_worker, daemon=True)
+            self._wake_thread.start()
+        else:
+            self.wake_btn.configure(text="Wake OFF", fg_color="#3a2d44", hover_color="#4d3a5c")
+            self._set_status("Wake mode desactivado")
+
+    def _wake_worker(self):
+        while self._wake_mode:
+            if self._is_listening or self._is_processing:
+                time.sleep(0.2)
+                continue
+
+            heard = listen(timeout=2, phrase_limit=4)
+            if not heard:
+                continue
+
+            heard_lower = heard.lower()
+            if not any(w in heard_lower for w in WAKE_WORDS):
+                continue
+
+            self.after(0, lambda: self._set_status("Wake detectado. Te escucho..."))
+            command_text = listen(timeout=5, phrase_limit=9)
+            if command_text:
+                self.after(0, lambda txt=command_text: self._process_input(txt))
+            else:
+                self.after(0, lambda: self._set_status("No escuché el comando tras la palabra clave."))
+
+    def _on_close(self):
+        self._wake_mode = False
+        self.destroy()
 
     # ── Limpiar chat ─────────────────────────────────────────────────────────
 
