@@ -17,12 +17,21 @@ from jarvis.config import ASSISTANT_NAME, WAKE_WORDS
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
 
+QUICK_ACTIONS = [
+    ("Spotify", "abre spotify"),
+    ("Edge", "abre microsoft edge"),
+    ("YouTube", "busca musica lo-fi en youtube"),
+    ("Vol +", "sube el volumen"),
+    ("Vol -", "baja el volumen"),
+    ("Bloquear", "bloquea la pantalla"),
+]
+
 
 class JarvisApp(ctk.CTk):
     def __init__(self):
         super().__init__()
         self.title(f"{ASSISTANT_NAME} - Asistente IA")
-        self.geometry("700x600")
+        self.geometry("880x650")
         self.resizable(True, True)
         self.minsize(500, 450)
 
@@ -49,7 +58,7 @@ class JarvisApp(ctk.CTk):
         main.grid_columnconfigure(0, weight=1)
 
         # ── Header ──
-        header = ctk.CTkFrame(main, height=60, corner_radius=0, fg_color="#1a1a2e")
+        header = ctk.CTkFrame(main, height=60, corner_radius=0, fg_color="#0c1226")
         header.grid(row=0, column=0, sticky="ew")
         header.grid_propagate(False)
 
@@ -57,8 +66,15 @@ class JarvisApp(ctk.CTk):
             header,
             text=f"● {ASSISTANT_NAME}",
             font=ctk.CTkFont(size=20, weight="bold"),
-            text_color="#00d4ff",
+            text_color="#2ee6a6",
         ).pack(side="left", padx=20, pady=10)
+
+        ctk.CTkLabel(
+            header,
+            text="Pilot Build",
+            font=ctk.CTkFont(size=11, weight="bold"),
+            text_color="#8fa2d4",
+        ).pack(side="left", padx=(0, 10), pady=10)
 
         ctk.CTkButton(
             header,
@@ -66,8 +82,8 @@ class JarvisApp(ctk.CTk):
             width=80,
             height=30,
             command=self._clear_chat,
-            fg_color="#2d2d44",
-            hover_color="#3d3d5c",
+            fg_color="#27314f",
+            hover_color="#344064",
         ).pack(side="right", padx=10)
 
         self.wake_btn = ctk.CTkButton(
@@ -76,26 +92,53 @@ class JarvisApp(ctk.CTk):
             width=100,
             height=30,
             command=self._toggle_wake_mode,
-            fg_color="#3a2d44",
-            hover_color="#4d3a5c",
+            fg_color="#3b2d58",
+            hover_color="#4c3a70",
         )
         self.wake_btn.pack(side="right", padx=(0, 8))
 
         # ── Área de chat ──
-        self.chat_box = ctk.CTkScrollableFrame(main, corner_radius=10, fg_color="#0d0d1a")
+        self.chat_box = ctk.CTkScrollableFrame(main, corner_radius=10, fg_color="#070b18")
         self.chat_box.grid(row=1, column=0, sticky="nsew", padx=10, pady=5)
         self.chat_box.grid_columnconfigure(0, weight=1)
 
         # ── Barra de estado ──
         self.status_label = ctk.CTkLabel(
             main, text="Listo", font=ctk.CTkFont(size=12),
-            text_color="#888888"
+            text_color="#8b98ba"
         )
         self.status_label.grid(row=2, column=0, sticky="w", padx=15)
 
+        # ── Acciones rápidas ──
+        actions_frame = ctk.CTkFrame(main, height=56, corner_radius=0, fg_color="#0d1328")
+        actions_frame.grid(row=3, column=0, sticky="ew")
+        actions_frame.grid_columnconfigure(0, weight=1)
+
+        actions_row = ctk.CTkFrame(actions_frame, fg_color="transparent")
+        actions_row.grid(row=0, column=0, sticky="w", padx=10, pady=8)
+
+        ctk.CTkLabel(
+            actions_row,
+            text="Acciones rápidas",
+            font=ctk.CTkFont(size=12, weight="bold"),
+            text_color="#9fb0d9",
+        ).pack(side="left", padx=(0, 8))
+
+        for label, prompt in QUICK_ACTIONS:
+            ctk.CTkButton(
+                actions_row,
+                text=label,
+                width=88,
+                height=30,
+                corner_radius=16,
+                fg_color="#1f2d52",
+                hover_color="#294075",
+                command=lambda p=prompt: self._process_input(p),
+            ).pack(side="left", padx=4)
+
         # ── Panel de entrada ──
-        input_frame = ctk.CTkFrame(main, height=60, corner_radius=0, fg_color="#111122")
-        input_frame.grid(row=3, column=0, sticky="ew", padx=0, pady=0)
+        input_frame = ctk.CTkFrame(main, height=60, corner_radius=0, fg_color="#0b1022")
+        input_frame.grid(row=4, column=0, sticky="ew", padx=0, pady=0)
         input_frame.grid_columnconfigure(0, weight=1)
         input_frame.grid_propagate(False)
 
@@ -105,6 +148,8 @@ class JarvisApp(ctk.CTk):
             font=ctk.CTkFont(size=14),
             height=40,
             corner_radius=20,
+            fg_color="#121a33",
+            border_color="#2a3b70",
         )
         self.input_entry.grid(row=0, column=0, padx=10, pady=10, sticky="ew")
         self.input_entry.bind("<Return>", lambda _: self._send_text())
@@ -116,6 +161,8 @@ class JarvisApp(ctk.CTk):
             height=40,
             corner_radius=20,
             command=self._send_text,
+            fg_color="#2f52b0",
+            hover_color="#4268c8",
         )
         self.send_btn.grid(row=0, column=1, padx=(0, 5), pady=10)
 
@@ -125,8 +172,8 @@ class JarvisApp(ctk.CTk):
             width=50,
             height=40,
             corner_radius=20,
-            fg_color="#1a3a4a",
-            hover_color="#2a5a6a",
+            fg_color="#1f4b3a",
+            hover_color="#28624b",
             command=self._toggle_voice,
         )
         self.voice_btn.grid(row=0, column=2, padx=(0, 10), pady=10)
@@ -204,7 +251,7 @@ class JarvisApp(ctk.CTk):
             return
         self._is_processing = True
         self._add_message("Tú", user_text, is_bot=False)
-        self._set_status("Pensando...")
+        self._set_status("Pensando y ejecutando...")
         self.send_btn.configure(state="disabled")
         threading.Thread(target=self._bot_reply_worker, args=(user_text,), daemon=True).start()
 
